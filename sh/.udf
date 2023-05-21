@@ -1,5 +1,7 @@
 # call PDM functionality to activate venv
-function pdm-activate(){eval $(pdm venv activate "$1")}
+function pdm-activate(){
+  eval $(pdm venv activate "$1")
+}
 
 # load envfile in arg1, if not supplied, defaults to ".env"
 function dotenv(){
