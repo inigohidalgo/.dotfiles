@@ -1,0 +1,21 @@
+# call PDM functionality to activate venv
+function pdm-activate
+  eval (pdm venv activate "$argv[1]")
+end
+
+# load envfile in arg1, if not supplied, defaults to ".env"
+function dotenv
+  set -f envfile (if test -n "$argv"; echo $argv[1]; else; echo .env; end)
+  # set -gx -a; source $envfile; set -e -gx
+  if not test -f "$envfile"
+    echo "Unable to load $envfile"
+    return 1
+  end
+  echo "Loading $envfile"
+  echo "Exporting keys:"
+  for line in (cat $envfile | grep -v '^#' | grep -v '^\s*$')
+    set item (string split -m 1 '=' $line)
+    set -gx $item[1] $item[2]
+    echo "  $item[1]"
+  end
+end
