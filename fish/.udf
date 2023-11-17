@@ -3,7 +3,8 @@ function pdm-activate
   eval (pdm venv activate "$argv[1]")
 end
 
-function ssh-executable
+# depends on https://github.com/sharkdp/fd
+function ssh-executable 
   fd -E '*.pub' '^id_' ~/.ssh -x chmod 400
 end
 
