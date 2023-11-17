@@ -97,3 +97,7 @@ function ssh_agent_init
     # Finally, show what keys are currently in the agent
     # ssh-add -l
 end
+
+function azl --wraps='az login --use-device-code' --description 'alias azl=az login --use-device-code'
+  az login --use-device-code $argv  
+end
