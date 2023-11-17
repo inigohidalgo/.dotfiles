@@ -147,3 +147,21 @@ function lndir
     # Create a symbolic link with an absolute target path
     ln -s (readlink -f "$target_directory") "$symlink_name"
 end
+
+function remove_substring_from_path
+    set substring $argv[1]
+    set matching_indices
+    for i in (seq (count $PATH))
+        set path_i $PATH[$i]
+        if string match --quiet --regex ".*$substring.*" $path_i
+            set -a matching_indices $i
+        end
+    end
+    if test -n "$matching_indices"
+        echo "remove_substring_from_path: removing the following paths from PATH"
+        echo $PATH[$matching_indices]
+        set -e PATH[$matching_indices]
+    end
+end
+
+    
