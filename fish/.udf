@@ -101,3 +101,11 @@ end
 function azl --wraps='az login --use-device-code' --description 'alias azl=az login --use-device-code'
   az login --use-device-code $argv  
 end
+
+
+function install_ipykernel_pwd
+    set current_directory (basename $PWD)
+    set command "python -m ipykernel install --user --name temp.$current_directory --display-name temp/$current_directory"
+    echo $command
+    eval $command
+end
