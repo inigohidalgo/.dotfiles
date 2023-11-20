@@ -164,4 +164,20 @@ function remove_substring_from_path
     end
 end
 
+function twine-upload
+    set -l repository $argv[1]
+    if test -z "$repository"
+        set repository test-buildfeed
+        echo "WARNING: No repository specified, using $repository"
+    end
+    set -l build_version $argv[2]
+    # if no version set, get version from pdm
+    if test -z "$build_version"
+        echo "WARNING: No version specified, getting current version from pdm"
+        set build_version (pdm show --version)
+    end
+    set build_str "dist/*$build_version*"
+    echo "Uploading $build_str to $repository"
+    twine upload $build_str -r $repository
+end
     
