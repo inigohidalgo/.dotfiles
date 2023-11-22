@@ -3,6 +3,23 @@ function pdm-activate
   eval (pdm venv activate "$argv[1]")
 end
 
+function create_venv
+    set conda_source_env py310
+    if test -n $argv[1]
+      set conda_source_env $argv[1]
+    else
+      set conda_source_env py310
+    end
+    if set -q argv[2]; and test -n $argv[2]
+      set virtual_env $argv[2]
+    else
+      set virtual_env .venv
+    end
+
+    set create_venv_command "conda run -n $conda_source_env python -m venv $virtual_env"
+    echo $create_venv_command
+    eval $create_venv_command
+end
 
 function activate_venv
     set virtual_env .venv
