@@ -4,7 +4,6 @@ function pdm-activate
 end
 
 function create_venv
-    set conda_source_env py310
     if set -q $argv[1]; and test -n $argv[1]
       set conda_source_env $argv[1]
     else
