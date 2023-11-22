@@ -3,8 +3,10 @@ function pdm-activate
   eval (pdm venv activate "$argv[1]")
 end
 
+set default_venv_name .venv
+
 function create_venv
-    if set -q $argv[1]; and test -n $argv[1]
+    if set -q argv[1]; and test -n $argv[1]
       set conda_source_env $argv[1]
     else
       set conda_source_env py310
@@ -14,7 +16,7 @@ function create_venv
     if set -q argv[2]; and test -n $argv[2]
       set virtual_env $argv[2]
     else
-      set virtual_env .venv
+      set virtual_env $default_venv_name
       echo "WARNING: No virtual environment specified, using $virtual_env"
     end
 
@@ -24,9 +26,9 @@ function create_venv
 end
 
 function activate_venv
-    set virtual_env .venv
-    argparse -n activate_venv 'virtual_env=' -- $argv
-    source $virtual_env/bin/activate.fish
+  set virtual_env $default_venv_name
+  argparse -n activate_venv 'virtual_env=' -- $argv
+  source $virtual_env/bin/activate.fish
 end
 
 
