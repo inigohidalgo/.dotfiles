@@ -5,15 +5,18 @@ end
 
 function create_venv
     set conda_source_env py310
-    if test -n $argv[1]
+    if set -q $argv[1]; and test -n $argv[1]
       set conda_source_env $argv[1]
     else
       set conda_source_env py310
+      echo "WARNING: No source conda environment specified, using $conda_source_env"
     end
+  
     if set -q argv[2]; and test -n $argv[2]
       set virtual_env $argv[2]
     else
       set virtual_env .venv
+      echo "WARNING: No virtual environment specified, using $virtual_env"
     end
 
     set create_venv_command "conda run -n $conda_source_env python -m venv $virtual_env"
