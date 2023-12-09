@@ -26,8 +26,12 @@ function create_venv
 end
 
 function activate_venv
+  if set -q argv[1]; and test -n $argv[1]
+    set virtual_env $argv[1]
+  else
   set virtual_env $default_venv_name
-  argparse -n activate_venv 'virtual_env=' -- $argv
+    echo "WARNING: No virtual environment specified, using $virtual_env"
+  end
   source $virtual_env/bin/activate.fish
 end
 
