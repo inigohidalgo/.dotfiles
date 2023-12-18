@@ -29,16 +29,33 @@ function activate_venv
   if set -q argv[1]; and test -n $argv[1]
     set virtual_env $argv[1]
   else
-  set virtual_env $default_venv_name
+    set virtual_env $default_venv_name
     echo "WARNING: No virtual environment specified, using $virtual_env"
   end
   source $virtual_env/bin/activate.fish
 end
 
 
-function install_ipykernel_pwd
+function install_ipykernel -d "Install ipykernel for currently-activated venv. Optionally specify kernel name and kernel display name"
   set current_directory (basename $PWD)
-  set command "python -m ipykernel install --user --name temp.$current_directory --display-name temp/$current_directory"
+  if set -q argv[1]; and test -n $argv[1]
+    set kernel_name $argv[1]
+    set kernel_name_supplied true
+  else
+    set kernel_name temp.$current_directory
+    echo "WARNING: No kernel name specified, using $kernel_name"
+    set kernel_name_supplied false
+  end
+  
+  if set -q argv[2]; and test -n $argv[2]
+    set kernel_display_name $argv[2]
+  else if test $kernel_name_supplied
+    set kernel_display_name $kernel_name
+  else
+    set kernel_display_name temp/$current_directory
+  end
+  
+  set command "python -m ipykernel install --user --name $kernel_name --display-name $kernel_display_name"
   echo $command
   eval $command
 end
