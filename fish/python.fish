@@ -78,4 +78,5 @@ function twine-upload
   echo "Uploading $build_str to $repository"
   twine upload $build_str -r $repository
 end
-  
+
+alias flake8 "flake8 --exclude .venv,.git,__pycache__,build,dist --max-line-length 120" # workaround for global flake8 config
