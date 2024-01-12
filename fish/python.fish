@@ -7,10 +7,10 @@ set default_venv_name .venv
 
 function create_venv
     if set -q argv[1]; and test -n $argv[1]
-      set conda_source_env $argv[1]
+      set mise_source_env $argv[1]
     else
-      set conda_source_env py310
-      echo "WARNING: No source conda environment specified, using $conda_source_env"
+      set mise_source_env 3.10
+      echo "WARNING: No source mise environment specified, using $mise_source_env"
     end
   
     if set -q argv[2]; and test -n $argv[2]
@@ -20,7 +20,7 @@ function create_venv
       echo "WARNING: No virtual environment specified, using $virtual_env"
     end
 
-    set create_venv_command "conda run -n $conda_source_env python -m venv $virtual_env"
+    set create_venv_command "mise exec python@$mise_source_env -- python -m venv $virtual_env"
     echo $create_venv_command
     eval $create_venv_command
 end
