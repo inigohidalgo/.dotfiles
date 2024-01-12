@@ -8,10 +8,20 @@ General personal system config files
 git clone clone_url path/
 ```
 
-Add to shell config file e.g. `.bashrc`
+Add to shell config file
 
-```
-# Source shell UDFs
+
+#### bash
+
+`.bashrc`
+```bash
 dotfile_directory="path/"
-source  "${dotfile_directory}/sh/.udf"
+source "${dotfile_directory}/sh/.udf"
+```
+
+#### fish
+
+`~/.config/fish/config.fish`
+```sh
+DOTFILE_DIR=$HOME/.config/.dotfiles/fish source $DOTFILE_DIR/.fish
 ```
