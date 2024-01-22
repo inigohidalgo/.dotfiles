@@ -35,6 +35,8 @@ function activate_venv
   source $virtual_env/bin/activate.fish
 end
 
+alias cv="create_venv"
+alias av="activate_venv"
 
 function install_ipykernel -d "Install ipykernel for currently-activated venv. Optionally specify kernel name and kernel display name"
   set current_directory (basename $PWD)
