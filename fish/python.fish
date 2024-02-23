@@ -38,6 +38,8 @@ end
 alias cv="create_venv"
 alias av="activate_venv"
 
+alias uvp="uv pip install"
+
 function install_ipykernel -d "Install ipykernel for currently-activated venv. Optionally specify kernel name and kernel display name"
   set current_directory (basename $PWD)
   if set -q argv[1]; and test -n $argv[1]
