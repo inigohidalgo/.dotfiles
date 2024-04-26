@@ -38,7 +38,19 @@ end
 alias cv="create_venv"
 alias av="activate_venv"
 
+
+function uv_pip_install_requirements
+  if set -q argv[1]; and test -n $argv[1]
+    set requirements_file $argv[1]
+  else
+    set requirements_file requirements.txt
+    echo "WARNING: No requirements file specified, using $requirements_file"
+  end
+  uv pip install -r $requirements_file
+end
+
 alias uvp="uv pip install"
+alias uvpr="uv_pip_install_requirements"
 
 function install_ipykernel -d "Install ipykernel for currently-activated venv. Optionally specify kernel name and kernel display name"
   set current_directory (basename $PWD)
