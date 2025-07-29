@@ -20,7 +20,7 @@ function create_venv
       echo "WARNING: No virtual environment specified, using $virtual_env"
     end
 
-    set create_venv_command "mise exec python@$mise_source_env -- uv venv $virtual_env"
+    set create_venv_command "uv venv --python $python_version $virtual_env"
     echo $create_venv_command
     eval $create_venv_command
 end
