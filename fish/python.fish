@@ -6,20 +6,27 @@ end
 set default_venv_name .venv
 
 function create_venv
-    if set -q argv[1]; and test -n $argv[1]
-      set mise_source_env $argv[1]
-    else
-      set mise_source_env 3.10
-      echo "WARNING: No source mise environment specified, using $mise_source_env"
+    set python_version 3.10
+    set virtual_env $default_venv_name
+    
+    argparse 'v/version=' 'n/name=' 'h/help' -- $argv
+    or return
+    
+    if set -q _flag_help
+        echo "Usage: create_venv [-v|--version VERSION] [-n|--name NAME]"
+        echo "  -v, --version  Python version (default: 3.10)"
+        echo "  -n, --name     Virtual environment name (default: .venv)"
+        return 0
     end
-  
-    if set -q argv[2]; and test -n $argv[2]
-      set virtual_env $argv[2]
-    else
-      set virtual_env $default_venv_name
-      echo "WARNING: No virtual environment specified, using $virtual_env"
+    
+    if set -q _flag_version
+        set python_version $_flag_version
     end
-
+    
+    if set -q _flag_name
+        set virtual_env $_flag_name
+    end
+    
     set create_venv_command "uv venv --python $python_version $virtual_env"
     echo $create_venv_command
     eval $create_venv_command
