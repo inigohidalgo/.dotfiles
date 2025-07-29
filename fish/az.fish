@@ -22,8 +22,10 @@ function azl --wraps='az login --use-device-code' --description 'alias azl=az lo
         if test -n "$url" -a -n "$device_code"
             # Display formatted version without clearing screen
             set -l clickable_url (create_hyperlink $url $url)
+            echo ""
             printf "Code: %s%s%s" (set_color --bold cyan) "$device_code" (set_color normal)
-            echo
+            echo ""
+            echo ""
             echo "Link: $clickable_url"
 
             echo ""
@@ -37,6 +39,15 @@ function azl --wraps='az login --use-device-code' --description 'alias azl=az lo
     # Wait for the background process to complete and clean up
     wait $bg_pid
     set -l exit_code $status
+    
+    # Show success/failure message based on exit code
+    echo ""
+    if test $exit_code -eq 0
+        printf "%sAzure login successful!%s\n" (set_color green) (set_color normal)
+    else
+        printf "%sAzure login failed (exit code: %d)%s\n" (set_color red) $exit_code (set_color normal)
+    end
+    
     rm -f $temp_file
     return $exit_code
 end
