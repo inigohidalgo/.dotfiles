@@ -16,7 +16,7 @@ Add to shell config file
 `.bashrc`
 ```bash
 dotfile_directory="path/"
-source "${dotfile_directory}/sh/.udf"
+source "${dotfile_directory}/sh/{file-to-import}.sh"
 ```
 
 #### fish
