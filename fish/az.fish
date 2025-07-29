@@ -150,23 +150,25 @@ function az_pipeline_status --description 'Get status of recent Azure pipeline r
     set -l run_status $_flag_status  # Renamed status to run_status
     set -l result $_flag_result
     
+    if test -z "$run_status"
+        set run_status "all"
+    end
+
     # Validate status if provided
-    if test -n "$run_status"
-        set -l valid_statuses "all" "cancelling" "completed" "inProgress" "none" "notStarted" "postponed"
-        set -l status_valid 0
-        
-        for valid_status in $valid_statuses
-            if test "$run_status" = "$valid_status"
-                set status_valid 1
-                break
-            end
+    set -l valid_statuses "all" "cancelling" "completed" "inProgress" "none" "notStarted" "postponed"
+    set -l status_valid 0
+    
+    for valid_status in $valid_statuses
+        if test "$run_status" = "$valid_status"
+            set status_valid 1
+            break
         end
-        
-        if test $status_valid -eq 0
-            echo "Error: '$run_status' is not a valid value for status."
-            echo "Allowed values: all, cancelling, completed, inProgress, none, notStarted, postponed."
-            return 1
-        end
+    end
+    
+    if test $status_valid -eq 0
+        echo "Error: '$run_status' is not a valid value for status."
+        echo "Allowed values: all, cancelling, completed, inProgress, none, notStarted, postponed."
+        return 1
     end
     
     # Validate result if provided
@@ -210,6 +212,18 @@ function az_pipeline_status --description 'Get status of recent Azure pipeline r
                     set repo (string replace -r '.*github.com[:/](.+/.+)\.git' '$1' $git_remote)
                     set repo_type "github"
                     echo "Extracted repository: $repo"
+                
+                # azure devops
+                else if string match -q "*dev.azure.com*" $git_remote
+                    # Parse Azure DevOps URL format: git@ssh.dev.azure.com:v3/Axpo-AXSO/<project>/<repo>
+                    # or https://dev.azure.com/Axpo-AXSO/<project>/<repo>
+                    if string match -rq -- '.*dev\.azure\.com[:/]+v3?/[^/]+/([^/]+)/([^/]+)(?:\.git)?$' $git_remote
+                        set project (string replace -r '.*dev\.azure\.com[:/]+v3?/[^/]+/([^/]+)/[^/]+(?:\.git)?$' '$1' $git_remote)
+                        set repo (string replace -r '.*dev\.azure\.com[:/]+v3?/[^/]+/[^/]+/([^/]+)(?:\.git)?$' '$1' $git_remote)
+                        set repo_type "tfsgit"
+                        echo "Extracted project: $project"
+                        echo "Extracted repository: $repo"
+                    end
                 end
             end
         end
@@ -232,6 +246,7 @@ function az_pipeline_status --description 'Get status of recent Azure pipeline r
     
     # Get pipeline IDs for the specific repository
     set -l pipelines_cmd "az pipelines list --organization \"$org\" --project \"$project\" --repository \"$repo\" --repository-type \"$repo_type\""
+    echo "Command: $pipelines_cmd"
     set -l pipelines_json (eval $pipelines_cmd)
     
     # Store the exit status in a variable to avoid overwriting it
