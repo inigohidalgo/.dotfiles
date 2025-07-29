@@ -90,3 +90,41 @@ function argo_clean_cronworkflows_by_label
         echo "Operation cancelled"
     end
 end
+function next_cron
+    # Default count: 5 if no argument provided
+    if not set -q argv[1]
+        set n 5
+    else
+        set n $argv[1]
+    end
+
+    # Default label if not provided
+    if not set -q argv[2]
+        set label 'pythia.analytics.axpo.com/branch!=dev'
+    else
+        set label $argv[2]
+    end
+
+    # Header
+    printf "%-40s %s\n" "NAME" "NEXT RUN"
+    printf '--------------------------------------------------\n'
+
+    # Process the cron list:
+    #  - Skip header
+    #  - Exclude rows with "N/A" in NEXT RUN
+    #  - Convert NEXT RUN to minutes for sorting
+    #  - Sort numerically and select first n entries
+    #  - Print NAME and original NEXT RUN
+    argo cron list -l "$label" | tail -n +2 | awk '$4 != "N/A" {
+        val = substr($4, 1, length($4)-1)
+        unit = substr($4, length($4), 1)
+        if (unit == "h") {
+            mins = val * 60
+        } else if (unit == "d") {
+            mins = val * 1440
+        } else {
+            mins = val
+        }
+        printf "%s %d %s\n", $1, mins, $4
+    }' | sort -k2,2n | head -n $n | awk '{printf "%-40s %s\n", $1, $3}'
+end
