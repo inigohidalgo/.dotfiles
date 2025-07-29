@@ -15,3 +15,8 @@ function create_hyperlink --description 'Create a clickable hyperlink for termin
     # Return the formatted hyperlink string using ANSI escape sequences
     printf "%b" "\033]8;;$url\007$display_text\033]8;;\007"
 end
+
+function colorize --description 'Print $argv in given color & style'
+    set -l col $argv[1]; set -e argv[1]
+    printf "%s%s%s" (set_color $col --bold) "$argv" (set_color normal)
+end

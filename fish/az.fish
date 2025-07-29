@@ -1,13 +1,13 @@
 function azl --wraps='az login --use-device-code' --description 'alias azl=az login --use-device-code'
     # Capture output without displaying it initially
     set -l temp_file (mktemp)
-    
+    echo "Starting device code login..."
     # Start az login and capture output to temp file without showing it
     bash -c "az login --use-device-code $argv" > $temp_file 2>&1 &
     set -l bg_pid $last_pid
     
     # Wait a moment for initial output
-    sleep 2
+    sleep 1
     
     # Read the captured output
     set -l output (cat $temp_file 2>/dev/null)
@@ -23,7 +23,7 @@ function azl --wraps='az login --use-device-code' --description 'alias azl=az lo
             # Display formatted version without clearing screen
             set -l clickable_url (create_hyperlink $url $url)
             echo ""
-            printf "Code: %s%s%s" (set_color --bold cyan) "$device_code" (set_color normal)
+            echo "Code: "(colorize cyan "$device_code")
             echo ""
             echo ""
             echo "Link: $clickable_url"
@@ -43,9 +43,9 @@ function azl --wraps='az login --use-device-code' --description 'alias azl=az lo
     # Show success/failure message based on exit code
     echo ""
     if test $exit_code -eq 0
-        printf "%sAzure login successful!%s\n" (set_color green) (set_color normal)
+        echo (colorize green "Azure login successful!")
     else
-        printf "%sAzure login failed (exit code: %d)%s\n" (set_color red) $exit_code (set_color normal)
+        echo (colorize red "Azure login failed (exit code: $exit_code)")
     end
     
     rm -f $temp_file
