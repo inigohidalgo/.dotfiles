@@ -1,5 +1,42 @@
 function azl --wraps='az login --use-device-code' --description 'alias azl=az login --use-device-code'
-  az login --use-device-code $argv  
+    # Capture output without displaying it initially
+    set -l temp_file (mktemp)
+    
+    # Start az login and capture output to temp file without showing it
+    bash -c "az login --use-device-code $argv" > $temp_file 2>&1 &
+    set -l bg_pid $last_pid
+    
+    # Wait a moment for initial output
+    sleep 2
+    
+    # Read the captured output
+    set -l output (cat $temp_file 2>/dev/null)
+    
+    # Parse and format the device code message if we got the expected output
+    if string match -qr "use a web browser to open the page (.+) and enter the code ([A-Z0-9]+)" $output
+        # Extract URL - look for https://microsoft.com/devicelogin or similar
+        set -l url (string match -r "https://[^\\s]+" $output)
+        # Extract device code using the same pattern as the condition
+        set -l device_code (string replace -r ".*enter the code ([A-Z0-9]+).*" '$1' $output)
+        
+        if test -n "$url" -a -n "$device_code"
+            # Display formatted version without clearing screen
+            set -l clickable_url (create_hyperlink $url $url)
+            echo "🔗 Open this link: $clickable_url"
+            echo "📋 Device code: $device_code"
+            echo ""
+            echo "Waiting for authentication..."
+        end
+    else
+        # If parsing fails, show original output
+        echo $output
+    end
+    
+    # Wait for the background process to complete and clean up
+    wait $bg_pid
+    set -l exit_code $status
+    rm -f $temp_file
+    return $exit_code
 end
 
 
