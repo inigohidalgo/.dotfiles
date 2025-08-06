@@ -54,7 +54,7 @@ function git_worktree_add
         return 1
     end
 
-    echo "Creating worktree: $branch_name → $target_path"
+    echo "Creating worktree: $branch_name → $target_path" >&2
     
     # Check if branch exists (local or remote)
     set -l branch_exists 0
@@ -70,19 +70,19 @@ function git_worktree_add
     
     # Execute appropriate git worktree command
     if test $branch_exists -eq 1
-        echo "Using existing branch: $branch_name"
-        git worktree add "$target_path" "$branch_name"
+        echo "Using existing branch: $branch_name" >&2
+        git worktree add "$target_path" "$branch_name" >&2
     else if test -n "$start_point"
-        echo "Creating new branch: $branch_name from $start_point"
-        git worktree add "$target_path" -b "$branch_name" "$start_point"
+        echo "Creating new branch: $branch_name from $start_point" >&2
+        git worktree add "$target_path" -b "$branch_name" "$start_point" >&2
     else
-        echo "Creating new branch: $branch_name"
-        git worktree add "$target_path" -b "$branch_name"
+        echo "Creating new branch: $branch_name" >&2
+        git worktree add "$target_path" -b "$branch_name" >&2
     end
     
     # Return the path if successful
     if test $status -eq 0
-        echo "Worktree ready"
+        echo "Worktree ready: $target_path" >&2
         echo "$target_path"
     else
         echo "Failed to create worktree" >&2
