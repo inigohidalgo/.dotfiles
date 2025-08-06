@@ -2,7 +2,7 @@ function sanitize_git_branch
     echo $argv[1] | tr '[:upper:]' '[:lower:]' | tr -c '[:alnum:]._-' '-' | tr -s '-' | sed 's/^-\|-$//g'
 end
 
-function git_worktree
+function git_worktree_add
     # check out a branch from the current directory
     # into a worktree in another directory
     # finally return the path to the new directory
@@ -75,3 +75,5 @@ function git_worktree
         return 1
     end
 end
+
+alias gwa="git_worktree_add"
