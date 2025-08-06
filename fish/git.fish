@@ -83,6 +83,8 @@ function git_worktree_add
     # Return the path if successful
     if test $status -eq 0
         echo "Worktree ready: $target_path" >&2
+        set -g worktree_dir "$target_path"
+        echo "Variable \$worktree_dir set to: $target_path" >&2
         echo "$target_path"
     else
         echo "Failed to create worktree" >&2
