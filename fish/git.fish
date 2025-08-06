@@ -3,20 +3,22 @@ function sanitize_git_branch
 end
 
 function git_worktree_add
-    # check out a branch from the current directory
-    # into a worktree in another directory
-    # finally return the path to the new directory
-    # if no path is set it will default to a directory
-    # under the global worktree directory
-    # ~/repos/worktrees/{current-repo-name}/{sanitized-branch-name}
+    # Create a git worktree for a branch in a separate directory
+    # Usage: git_worktree_add <branch-name> [options]
+    # Options:
+    #   -p/--path DIR    Base directory (creates DIR/branch-name)
+    #   -n/--name NAME   Custom repo name (creates ~/repos/worktrees/NAME/branch-name)
+    #   -f/--from BRANCH Create new branch starting from BRANCH
     
     # Parse arguments
-    argparse 'p/path=' 'n/name=' -- $argv
+    argparse 'p/path=' 'n/name=' 'f/from=' -- $argv
     or return 1
+
     
     set -l branch_name $argv[1]
     set -l custom_path $_flag_path
     set -l custom_name $_flag_name
+    set -l start_point $_flag_from
     
     # Check for mutually exclusive arguments
     if test -n "$custom_path" -a -n "$custom_name"
@@ -52,26 +54,38 @@ function git_worktree_add
         return 1
     end
 
-    echo "Target path $target_path"
-    echo "Target branch $branch_name"
-    echo "Sanitized branch $sanitized_branch"
+    echo "Creating worktree: $branch_name → $target_path"
     
     # Check if branch exists (local or remote)
-    if git show-ref --verify --quiet "refs/heads/$branch_name"
-        # Branch exists locally
+    set -l branch_exists 0
+    if git show-ref --verify --quiet "refs/heads/$branch_name"; or git show-ref --verify --quiet "refs/remotes/origin/$branch_name"
+        set branch_exists 1
+    end
+    
+    # Validate start_point usage
+    if test $branch_exists -eq 1 -a -n "$start_point"
+        echo "Error: Branch $branch_name already exists, cannot use --from" >&2
+        return 1
+    end
+    
+    # Execute appropriate git worktree command
+    if test $branch_exists -eq 1
+        echo "Using existing branch: $branch_name"
         git worktree add "$target_path" "$branch_name"
-    else if git show-ref --verify --quiet "refs/remotes/origin/$branch_name"
-        # Branch exists on remote
-        git worktree add "$target_path" "$branch_name"
+    else if test -n "$start_point"
+        echo "Creating new branch: $branch_name from $start_point"
+        git worktree add "$target_path" -b "$branch_name" "$start_point"
     else
-        # Create new branch
+        echo "Creating new branch: $branch_name"
         git worktree add "$target_path" -b "$branch_name"
     end
     
     # Return the path if successful
     if test $status -eq 0
+        echo "Worktree ready"
         echo "$target_path"
     else
+        echo "Failed to create worktree" >&2
         return 1
     end
 end
