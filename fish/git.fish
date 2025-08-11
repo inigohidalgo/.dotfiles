@@ -93,3 +93,6 @@ function git_worktree_add
 end
 
 alias gwa="git_worktree_add"
+alias gs="git status"
+alias gcm="git commit -m"
+alias gc="git checkout"
