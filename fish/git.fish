@@ -39,7 +39,7 @@ function git_worktree_add
     # Determine target path
     set -l target_path
     if test -n "$custom_path"
-        set target_path "$custom_path/$sanitized_branch"
+        set target_path "$custom_path"
     else if test -n "$custom_name"
         set target_path "$HOME/repos/worktrees/$custom_name/$sanitized_branch"
     else
