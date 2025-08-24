@@ -72,4 +72,14 @@ function dotenv
   end
 end
 
-
+function load_aa_env
+  set env_script ~/.config/.global-env/env.sh
+  if functions -q bass
+      bass source $env_script
+  else
+        set_color red
+        echo "Install 'bass' to import POSIX env into fish."
+        set_color normal
+        return 1
+    end
+end

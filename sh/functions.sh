@@ -9,3 +9,9 @@ function dotenv(){
   local envfile="${1:-.env}"
   set -a; source $envfile; set +a
 }
+
+function load_aa_env(){
+  env_script="$HOME/.config/.global-env/env.sh"
+  [ -f "$env_script" ] && \
+  . "$env_script"
+}
