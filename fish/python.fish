@@ -83,6 +83,12 @@ function install_ipykernel -d "Install ipykernel for currently-activated venv. O
   eval $command
 end
 
+function ruff_fix
+    uvx ruff check --fix $argv
+    uvx ruff format $argv
+end
+
+alias ,rf="ruff_fix"
 
 # depends on twine and pdm
 function twine-upload
