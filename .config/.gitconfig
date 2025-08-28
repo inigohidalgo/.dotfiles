@@ -1,0 +1,110 @@
+[user]
+	name = XXX
+	email = XXX
+
+[core]
+	editor = vim
+	autocrlf = input
+	quotepath = false
+	fsmonitor = true
+	excludesfile = /home/jovyan/.config/git/.gitignore
+
+[color]
+  ui = auto
+
+[push]
+	autoSetupRemote = true
+
+[includeIf "gitdir:/home/jovyan/repos/ihr/personal/"]
+	path = /home/jovyan/.config/git/.gitconfig-personal
+[pull]
+	ff = only
+[init]
+	defaultBranch = main
+
+[fetch]
+  prune = true
+
+
+[rebase]
+  autoStash = true
+  autosquash = true  
+
+[branch]
+  sort = -committerdate
+
+[tag]
+  sort = -version:refname
+
+
+
+[rerere]
+  enabled = true
+
+[alias]
+  # Status / info
+  s = status -sb
+  sb = status -sb
+  st = status
+  who = shortlog -sn --all --no-merges
+
+  # Log viewers
+  l = log --oneline --decorate --graph -20
+  lg = log --decorate --graph --date=short --pretty=format:'%C(auto)%h%d %C(blue)%ad %C(reset)%s %C(black)%C(bold)%an'
+  lp = log --patch
+  lt = log --oneline --decorate --graph --tags --simplify-by-decoration
+
+  # Diffs
+  d = diff
+  ds = diff --staged
+
+  # Add/commit
+  a = add
+  aa = add -A
+  c = commit
+  cm = commit -m
+  ca = commit --amend --no-edit
+  fixup = "!f(){ git commit --fixup \"$1\"; }; f"
+  autosquash = "!git rebase -i --autosquash $(git merge-base HEAD @{upstream})"
+
+  # Branch ops
+  b = branch
+  bv = branch -vv
+  ba = branch -a
+  bd = branch -d
+  bD = branch -D
+  co = switch
+  cob = switch -c
+  tr = "!f(){ git branch --set-upstream-to=\"origin/$1\" \"$1\"; }; f"
+
+  # Upstream/remote sync
+  f = fetch --prune
+  fa = fetch --all --prune
+  fu = "!git fetch origin $(git rev-parse --abbrev-ref HEAD)"
+  up = "!git fetch origin && git merge --ff-only @{u}"
+  rup = "!git fetch origin && git rebase @{u}"
+
+  # Worktree helpers
+  wtl = worktree list
+  wta = "!f(){ git worktree add \"$1\" \"${2:-HEAD}\"; }; f"
+  wtrm = "!f(){ git worktree remove \"$1\"; }; f"
+  wtprune = worktree prune
+
+  # Clean merged local branches (keeps current + protected)
+  bclean = "!f(){ cur=$(git rev-parse --abbrev-ref HEAD); git branch --merged | egrep -v \"\\*|main|master|develop|dev|$cur\" | xargs -r git branch -d; }; f"
+
+  # Ahead/behind snapshot vs upstream
+  ab = "!git rev-list --left-right --count @{upstream}...HEAD | awk '{print \"behind:\" $1, \"ahead:\" $2}'"
+
+  # Safer force push
+  p = push
+  pf = push --force-with-lease
+
+  # Quickly create a branch tracking remote/<name> if exists
+  track = "!f(){ git switch --track -c \"$1\" \"origin/$1\" 2>/dev/null || git switch -c \"$1\"; }; f"
+
+  # Merge a remote branch into the current branch (without switching worktrees)
+  mro = "!f(){ git fetch origin \"$1\" && git merge --ff-only \"origin/$1\"; }; f"
+
+  # Rebase current branch onto origin/main (explicit)
+  rbom = "!git fetch origin main && git rebase origin/main"
