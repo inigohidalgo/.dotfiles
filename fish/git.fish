@@ -44,7 +44,7 @@ function git_worktree_add
         set target_path "$HOME/repos/worktrees/$custom_name/$sanitized_branch"
     else
         # Default: ~/repos/worktrees/{repo-name}/{sanitized-branch}
-        set -l repo_name (basename (git rev-parse --show-toplevel))
+        set -l repo_name (basename "$(dirname "$(realpath "$(git rev-parse --git-common-dir)")")")
         set target_path "$HOME/repos/worktrees/$repo_name/$sanitized_branch"
     end
     
