@@ -20,3 +20,8 @@ function colorize --description 'Print $argv in given color & style'
     set -l col $argv[1]; set -e argv[1]
     printf "%s%s%s" (set_color $col --bold) "$argv" (set_color normal)
 end
+
+abbr -a ..2 "cd ../.."
+abbr -a ..3 "cd ../../.."
+abbr -a ..4 "cd ../../../.."
+abbr -a ..5 "cd ../../../../.."
