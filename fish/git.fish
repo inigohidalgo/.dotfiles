@@ -92,9 +92,6 @@ function git_worktree_add
     end
 end
 
+abbr -a g 'git'
+
 alias gwa="git_worktree_add"
-alias gwl="git worktree list"
-alias gwrm="git worktree remove"
-alias gs="git status"
-alias gcm="git commit -m"
-alias gc="git checkout"
