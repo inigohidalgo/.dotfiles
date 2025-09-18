@@ -2,6 +2,22 @@ function sanitize_git_branch
     echo $argv[1] | tr '[:upper:]' '[:lower:]' | tr -c '[:alnum:]._-' '-' | tr -s '-' | sed 's/^-\|-$//g'
 end
 
+function git_changed_files
+        set mode $argv[1]
+
+        switch $mode
+                case staged
+                        # Files staged for commit
+                        git diff --cached --name-only
+                    case unstaged
+                        # Files modified but not staged
+                        git diff --name-only
+                    case all '*'
+                        # Default: all changes (staged + unstaged) vs last commit
+                        git diff HEAD --name-only
+                end
+end
+
 function git_worktree_add
     # Create a git worktree for a branch in a separate directory
     # Usage: git_worktree_add <branch-name> [options]
@@ -95,3 +111,4 @@ end
 abbr -a g 'git'
 
 alias gwa="git_worktree_add"
+
