@@ -22,9 +22,14 @@ function azl --wraps='az login --use-device-code' --description 'alias azl=az lo
         if test -n "$url" -a -n "$device_code"
             # Display formatted version without clearing screen
             echo ""
-            echo "Code: "(colorize bryellow "$device_code")
-            echo "Link: $(create_hyperlink $url "[Click link]")"
-
+            echo "====================="
+            echo ""
+            echo " Code: "(colorize brgreen "$device_code")
+            echo ""
+            echo " Link: $(create_hyperlink $url "[Click link]")"
+            echo ""
+            echo "====================="
+            echo ""
             echo ""
             echo "Waiting for authentication..."
         end
