@@ -13,6 +13,7 @@ abbr -a --set-cursor cdcf 'cd $HOME/.config/fish/%'
 
 abbr -a --set-cursor cdr 'cd $REPOS_DIR/%'
 abbr -a --set-cursor cdra 'cd $REPOS_DIR/axpo/%'
+abbr -a --set-cursor cdrau 'cd $REPOS_DIR/axpo/Axpo-Utils/%'
 abbr -a --set-cursor cdrw 'cd $GWT_DIR/%'
 abbr -a --set-cursor cdri 'cd $REPOS_DIR/ihr/%'
 
