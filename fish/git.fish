@@ -22,7 +22,7 @@ function git_worktree_add
     # Create a git worktree for a branch in a separate directory
     # Usage: git_worktree_add <branch-name> [options]
     # Options:
-    #   -p/--path DIR    Base directory (creates DIR/branch-name)
+    #   -p/--path DIR    Creates worktree directory at $DIR
     #   -n/--name NAME   Custom repo name (creates ~/repos/worktrees/NAME/branch-name)
     #   -f/--from BRANCH Create new branch starting from BRANCH
     
