@@ -19,16 +19,26 @@ function git_changed_files
 end
 
 function git_worktree_add
-    # Create a git worktree for a branch in a separate directory
-    # Usage: git_worktree_add <branch-name> [options]
-    # Options:
-    #   -p/--path DIR    Creates worktree directory at $DIR
-    #   -n/--name NAME   Custom repo name (creates ~/repos/worktrees/NAME/branch-name)
-    #   -f/--from BRANCH Create new branch starting from BRANCH
-    
-    # Parse arguments
-    argparse 'p/path=' 'n/name=' 'f/from=' -- $argv
+    # git_worktree_add - create a git worktree (use -h for help)
+    argparse 'h/help' 'p/path=' 'n/name=' 'f/from=' -- $argv
     or return 1
+
+    if set -q _flag_help
+        echo "Usage: git_worktree_add <branch> [options]"
+        echo
+        echo "Options:"
+        echo "  -p, --path DIR      Use explicit directory for worktree"
+        echo "  -n, --name NAME     Base folder name under ~/repos/worktrees/"
+        echo "  -f, --from BRANCH   Create new branch starting from BRANCH"
+        echo "  -h, --help          Show this help and exit"
+        echo
+        echo "Examples:"
+        echo "  git_worktree_add feature-x"
+        echo "  git_worktree_add feature-x -f main"
+        echo "  git_worktree_add feature-x -n myrepo"
+        echo "  git_worktree_add feature-x -p ~/scratch/ft-x"
+        return 0
+    end
 
     
     set -l branch_name $argv[1]
