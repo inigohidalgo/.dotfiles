@@ -23,3 +23,21 @@ abbr -a --set-cursor cdtb 'cd $TOOLS_DIR/bimo/%'
 abbr -a --set-cursor cdtd 'cd $TOOLS_DIR/dsbuilder/%'
 
 abbr -a --set-cursor cdu 'cd $UC_DIR/%'
+
+if type -q eza
+    function ls --description "eza simple list (all files, modification times)"
+        eza -al --time-style="+%y-%m-%d %H:%M" --no-permissions --no-filesize --no-user $argv
+    end
+
+    function ll --description "long listing with perms, user, date, hidden"
+        eza -al --time-style="+%y-%m-%d %H:%M" $argv
+    end
+
+    function lt --description "tree view, 2 levels deep, hidden + times"
+        eza -aT --level=2 --time-style="+%y-%m-%d %H:%M" $argv
+    end
+
+    function lg --description "git-enhanced ls"
+        eza -al --git --time-style="+%y-%m-%d %H:%M" --no-permissions --no-filesize --no-user $argv
+    end
+end
