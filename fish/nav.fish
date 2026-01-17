@@ -11,6 +11,12 @@ abbr -a ..5 "cd ../../../../.."
 abbr -a --set-cursor cdc 'cd $HOME/.config/%'
 abbr -a --set-cursor cdcf 'cd $HOME/.config/fish/%'
 
+abbr -a --set-cursor cdd 'cd $DEV_DIR/%'
+abbr -a --set-cursor cdp 'cd $PLAN_DIR/main/%'
+
+abbr -a --set-cursor cds 'cd $DEV_DIR/stacks/%'
+
+
 abbr -a --set-cursor cdr 'cd $REPOS_DIR/%'
 abbr -a --set-cursor cdra 'cd $REPOS_DIR/axpo/%'
 abbr -a --set-cursor cdrau 'cd $AU_REPO_DIR/%'
