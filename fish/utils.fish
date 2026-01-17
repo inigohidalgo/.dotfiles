@@ -20,3 +20,17 @@ function colorize --description 'Print $argv in given color & style'
     set -l col $argv[1]; set -e argv[1]
     printf "%s%s%s" (set_color $col --bold) "$argv" (set_color normal)
 end
+
+function uuid --description 'Generate a UUID with N characters'
+    set -l length $argv[1]
+    if test -z "$length"
+        set length 6
+    end
+
+    set -l u (uuidgen | string replace -a -- '-' '')
+
+    # Take first N characters
+    string sub -s 1 -l $length -- $u
+end
+
+
