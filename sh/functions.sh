@@ -15,3 +15,10 @@ function load_aa_env(){
   [ -f "$env_script" ] && \
   . "$env_script"
 }
+
+print_dir_and_subdirs() {
+  echo "BASE_DIR=$1"
+  for d in "$1"/*/; do
+    [ -d "$d" ] && echo "SUBDIR=$(basename "$d")"
+  done
+}
