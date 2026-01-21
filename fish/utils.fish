@@ -33,4 +33,15 @@ function uuid --description 'Generate a UUID with N characters'
     string sub -s 1 -l $length -- $u
 end
 
+function generate_prefix --description 'Generate date or UUID prefix for naming (date|uuid)'
+    set -l format $argv[1]
+
+    if test "$format" = "uuid"
+        uuid 6
+    else
+        # Generate YYMMDD format
+        date +%y%m%d
+    end
+end
+
 
