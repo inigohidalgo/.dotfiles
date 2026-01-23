@@ -94,6 +94,7 @@ notify-toast() {
 
     title_escaped=$(_notify_escape_xml "$title")
     body_escaped=$(_notify_escape_xml "$body")
+    url_escaped=$(_notify_escape_xml "$url")
 
     # Build the toast XML based on type
     if [[ "$type" == "error" ]] || [[ "$persistent" == true ]]; then
@@ -105,7 +106,7 @@ notify-toast() {
         toast_xml+="</binding></visual>"
         toast_xml+="<actions>"
         if [[ -n "$url" ]]; then
-            toast_xml+="<action content='Open' activationType='protocol' arguments='$url'/>"
+            toast_xml+="<action content='Open' activationType='protocol' arguments='$url_escaped'/>"
         fi
         toast_xml+="<action content='Dismiss' arguments='dismiss' activationType='background'/>"
         toast_xml+="</actions>"
@@ -120,7 +121,7 @@ notify-toast() {
         toast_xml+="</binding></visual>"
         if [[ -n "$url" ]]; then
             toast_xml+="<actions>"
-            toast_xml+="<action content='Open' activationType='protocol' arguments='$url'/>"
+            toast_xml+="<action content='Open' activationType='protocol' arguments='$url_escaped'/>"
             toast_xml+="</actions>"
         fi
         toast_xml+="<audio src='ms-winsoundevent:Notification.Default'/>"
@@ -134,7 +135,7 @@ notify-toast() {
         toast_xml+="</binding></visual>"
         if [[ -n "$url" ]]; then
             toast_xml+="<actions>"
-            toast_xml+="<action content='Open' activationType='protocol' arguments='$url'/>"
+            toast_xml+="<action content='Open' activationType='protocol' arguments='$url_escaped'/>"
             toast_xml+="</actions>"
         fi
         toast_xml+="<audio src='ms-winsoundevent:Notification.Default'/>"
