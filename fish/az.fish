@@ -182,7 +182,8 @@ function az_pipeline_status --description 'Get status of recent Azure pipeline r
         echo "  -t, --repository-type=TYPE Repository type (default: github)"
         echo "  -n, --top=NUMBER          Number of runs to display (default: 10)"
         echo "  -b, --branch=BRANCH       Filter by branch name (e.g., refs/heads/main)"
-        echo "  -s, --status=STATUS       Filter by status (allowed: all, cancelling, completed, inProgress, none, notStarted, postponed)"
+        echo "  -s, --status=STATUS       Filter by status (allowed: cancelling, completed, inProgress, none, notStarted, postponed)"
+        echo "                            Without -s, queries inProgress+completed separately (avoids stale cache)"
         echo "  --result=RESULT           Filter by result (allowed: canceled, failed, none, partiallySucceeded, succeeded)"
         echo "  -h, --help                Show this help message"
         echo
@@ -202,25 +203,31 @@ function az_pipeline_status --description 'Get status of recent Azure pipeline r
     set -l run_status $_flag_status  # Renamed status to run_status
     set -l result $_flag_result
     
-    if test -z "$run_status"
-        set run_status "all"
+    # NOTE: --status all returns stale/cached results from Azure CLI.
+    # When user wants "all", we query inProgress and completed separately and merge.
+    set -l query_all_statuses 0
+    if test -z "$run_status" -o "$run_status" = "all"
+        set query_all_statuses 1
+        set run_status ""  # Will be set per-query below
     end
 
-    # Validate status if provided
-    set -l valid_statuses "all" "cancelling" "completed" "inProgress" "none" "notStarted" "postponed"
-    set -l status_valid 0
-    
-    for valid_status in $valid_statuses
-        if test "$run_status" = "$valid_status"
-            set status_valid 1
-            break
+    # Validate status if provided (and not querying all)
+    if test -n "$run_status"
+        set -l valid_statuses "cancelling" "completed" "inProgress" "none" "notStarted" "postponed"
+        set -l status_valid 0
+
+        for valid_status in $valid_statuses
+            if test "$run_status" = "$valid_status"
+                set status_valid 1
+                break
+            end
         end
-    end
-    
-    if test $status_valid -eq 0
-        echo "Error: '$run_status' is not a valid value for status."
-        echo "Allowed values: all, cancelling, completed, inProgress, none, notStarted, postponed."
-        return 1
+
+        if test $status_valid -eq 0
+            echo "Error: '$run_status' is not a valid value for status."
+            echo "Allowed values: cancelling, completed, inProgress, none, notStarted, postponed."
+            return 1
+        end
     end
     
     # Validate result if provided
@@ -328,34 +335,56 @@ function az_pipeline_status --description 'Get status of recent Azure pipeline r
     set -l pipeline_ids_arg (string join ' ' $pipeline_ids)
     
     # Construct base command for pipeline runs
-    set -l runs_cmd "az pipelines runs list --organization \"$org\" --project \"$project\" --pipeline-ids $pipeline_ids_arg --top $top"
-    
-    # Add filters if specified
+    set -l base_cmd "az pipelines runs list --organization \"$org\" --project \"$project\" --pipeline-ids $pipeline_ids_arg --top $top"
+
+    # Add branch filter if specified
     if test -n "$branch"
-        set runs_cmd "$runs_cmd --branch \"$branch\""
+        set base_cmd "$base_cmd --branch \"$branch\""
     end
-    
-    if test -n "$run_status"
-        set runs_cmd "$runs_cmd --status \"$run_status\""
-    end
-    
+
+    # Add result filter if specified
     if test -n "$result"
-        set runs_cmd "$runs_cmd --result \"$result\""
+        set base_cmd "$base_cmd --result \"$result\""
     end
-    
+
     # Get recent runs for these pipelines
     echo "Fetching recent runs for pipelines..."
-    echo "Command: $runs_cmd"
-    set -l runs_json (eval $runs_cmd)
-    
-    # Store the exit status in a variable to avoid overwriting it
-    set -l cmd_status $status
-    
-    if test $cmd_status -ne 0
-        echo "Error retrieving pipeline runs"
-        return 1
+
+    set -l runs_json
+    if test $query_all_statuses -eq 1
+        # Query inProgress and completed separately to avoid stale cache with --status all
+        echo "Querying inProgress and completed runs separately (--status all returns stale results)..."
+
+        set -l cmd_in_progress "$base_cmd --status \"inProgress\""
+        set -l cmd_completed "$base_cmd --status \"completed\""
+
+        set -l runs_in_progress (eval $cmd_in_progress 2>/dev/null)
+        set -l runs_completed (eval $cmd_completed 2>/dev/null)
+
+        # Merge results using jq
+        if test -n "$runs_in_progress" -a "$runs_in_progress" != "[]"
+            if test -n "$runs_completed" -a "$runs_completed" != "[]"
+                # Merge and sort by startTime descending, limit to top N
+                set runs_json (echo "$runs_in_progress" "$runs_completed" | jq -s "add | sort_by(.startTime) | reverse | .[:$top]")
+            else
+                set runs_json $runs_in_progress
+            end
+        else if test -n "$runs_completed" -a "$runs_completed" != "[]"
+            set runs_json $runs_completed
+        end
+    else
+        # Single status query
+        set -l runs_cmd "$base_cmd --status \"$run_status\""
+        echo "Command: $runs_cmd"
+        set runs_json (eval $runs_cmd)
+
+        set -l cmd_status $status
+        if test $cmd_status -ne 0
+            echo "Error retrieving pipeline runs"
+            return 1
+        end
     end
-    
+
     if test -z "$runs_json" -o "$runs_json" = "[]"
         echo "No recent pipeline runs found"
         return 1
