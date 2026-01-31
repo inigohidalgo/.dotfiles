@@ -13,6 +13,7 @@ abbr -a --set-cursor cdcf 'cd $HOME/.config/fish/%'
 
 abbr -a --set-cursor cdd 'cd $DEV_DIR/%'
 abbr -a --set-cursor cdp 'cd $PLAN_DIR/main/%'
+abbr -a --set-cursor cddt 'cd $DEV_DIR/tmp/%'
 
 abbr -a --set-cursor cds 'cd $DEV_DIR/stacks/%'
 
