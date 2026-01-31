@@ -1,13 +1,29 @@
 function mkd --description 'Create directory with date or UUID prefix'
-    argparse 'u/uuid' 'p/path=' -- $argv
+    argparse 'h/help' 'u/uuid' 'p/path=' 'j/jump' -- $argv
     or return 1
 
-    set -l description $argv[1]
-
-    if test -z "$description"
-        echo "Error: Description required" >&2
-        return 1
+    if set -q _flag_help; or test (count $argv) -eq 0
+        echo "Usage: mkd [OPTIONS] DESCRIPTION" >&2
+        echo "" >&2
+        echo "Create a directory with a date or UUID prefix." >&2
+        echo "" >&2
+        echo "Options:" >&2
+        echo "  -h, --help       Show this help message" >&2
+        echo "  -u, --uuid       Use UUID prefix instead of date" >&2
+        echo "  -p, --path PATH  Create directory in PATH (default: current dir)" >&2
+        echo "  -j, --jump       cd into the created directory" >&2
+        echo "" >&2
+        echo "Examples:" >&2
+        echo "  mkd my-project          # Creates 2024-01-31_my-project" >&2
+        echo "  mkd -u temp             # Creates 550e8400-e29b_temp" >&2
+        echo "  mkd -j work             # Creates dir and cd's into it" >&2
+        echo "  mkd foo | code          # Creates dir and opens in VS Code" >&2
+        echo "" >&2
+        echo "Sets \$created_dir to the created path for scripting." >&2
+        return 0
     end
+
+    set -l description $argv[1]
 
     # Generate prefix
     set -l prefix
@@ -41,6 +57,10 @@ function mkd --description 'Create directory with date or UUID prefix'
         set -g created_dir "$full_path"
         echo "Variable \$created_dir set to: $full_path" >&2
         echo "$full_path"
+        if set -q _flag_jump
+            echo "Changing directory to: $full_path" >&2
+            cd "$full_path"
+        end
     else
         echo "Failed to create directory" >&2
         return 1
