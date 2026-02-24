@@ -8,3 +8,4 @@ source $DOTFILE_DIR/argo.fish
 source $DOTFILE_DIR/utils.fish
 source $DOTFILE_DIR/fs.fish
 source $DOTFILE_DIR/nav.fish
+source $DOTFILE_DIR/agents.fish
