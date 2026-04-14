@@ -5,23 +5,23 @@ General personal system config files
 ## Setup
 
 ```
-git clone clone_url path/
+git clone <clone_url> <path>
 ```
 
-Add to shell config file
+### Install
 
-
-#### bash
-
-`.bashrc`
 ```bash
-dotfile_directory="path/"
-source "${dotfile_directory}/sh/{file-to-import}.sh"
+./install.sh install fish home   # ~/.config/fish/config.fish
+./install.sh install bash work   # ~/.bashrc
 ```
 
-#### fish
+Profiles: `home` (mac) or `work` (wsl). Each profile sources a different set of modules.
 
-`~/.config/fish/config.fish`
-```sh
-DOTFILE_DIR=$HOME/.config/.dotfiles/fish source $DOTFILE_DIR/.fish
+### Uninstall
+
+```bash
+./install.sh uninstall fish
+./install.sh uninstall bash
 ```
+
+The script appends a marked block (`# <<< dotfiles >>>`) to the shell rc file that sources selected modules. Uninstall removes exactly that block.
