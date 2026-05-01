@@ -13,8 +13,14 @@ FISH_WORK="$FISH_HOME argo az claude-profiles"
 BASH_HOME="functions"
 BASH_WORK="$BASH_HOME install_packages"
 
+# git: identity defaults flip per profile, "other" identity is wired via includeIf
+GIT_HOME_DEFAULT="personal"
+GIT_HOME_OVERRIDE_GITDIRS="~/dev/repos/axpo/"
+GIT_WORK_DEFAULT="work"
+GIT_WORK_OVERRIDE_GITDIRS="~/dev/repos/ihr/ ~/plan/"
+
 usage() {
-    echo "Usage: $0 <install|uninstall> <fish|bash> [home|work]"
+    echo "Usage: $0 <install|uninstall> <fish|bash|git> [home|work]"
     echo "  profile is required for install, ignored for uninstall"
     exit 1
 }
@@ -29,10 +35,15 @@ bash_rc() {
     echo "$HOME/.bashrc"
 }
 
+git_rc() {
+    echo "$HOME/.gitconfig"
+}
+
 get_rc() {
     case "$1" in
         fish) fish_rc ;;
         bash) bash_rc ;;
+        git)  git_rc  ;;
     esac
 }
 
@@ -47,10 +58,9 @@ gen_block() {
     local shell="$1" profile="$2"
     local modules dir ext src_prefix
 
-    modules="$(get_modules "$shell" "$profile")"
-
     case "$shell" in
         fish)
+            modules="$(get_modules "$shell" "$profile")"
             dir="$SCRIPT_DIR/fish"
             ext=".fish"
             echo "$MARKER_BEGIN"
@@ -61,12 +71,38 @@ gen_block() {
             echo "$MARKER_END"
             ;;
         bash)
+            modules="$(get_modules "$shell" "$profile")"
             dir="$SCRIPT_DIR/sh"
             ext=".sh"
             echo "$MARKER_BEGIN"
             echo "export DOTFILE_DIR=\"$dir\""
             for mod in $modules; do
                 echo "source \"\$DOTFILE_DIR/${mod}${ext}\""
+            done
+            echo "$MARKER_END"
+            ;;
+        git)
+            dir="$SCRIPT_DIR/git"
+            local default_id override_id override_gitdirs
+            case "$profile" in
+                home)
+                    default_id="$GIT_HOME_DEFAULT"
+                    override_gitdirs="$GIT_HOME_OVERRIDE_GITDIRS"
+                    override_id="work"
+                    ;;
+                work)
+                    default_id="$GIT_WORK_DEFAULT"
+                    override_gitdirs="$GIT_WORK_OVERRIDE_GITDIRS"
+                    override_id="personal"
+                    ;;
+            esac
+            echo "$MARKER_BEGIN"
+            echo "[include]"
+            echo "    path = $dir/common"
+            echo "    path = $dir/identity-${default_id}"
+            for gd in $override_gitdirs; do
+                echo "[includeIf \"gitdir:${gd}\"]"
+                echo "    path = $dir/identity-${override_id}"
             done
             echo "$MARKER_END"
             ;;
@@ -123,7 +159,7 @@ uninstall() {
 action="$1"
 shell="$2"
 
-[[ "$shell" != "fish" && "$shell" != "bash" ]] && usage
+[[ "$shell" != "fish" && "$shell" != "bash" && "$shell" != "git" ]] && usage
 
 case "$action" in
     install)
