@@ -3,9 +3,24 @@
 	autocrlf = input
 	quotepath = false
 	fsmonitor = true
+	pager = delta
 
 [color]
 	ui = auto
+
+[interactive]
+	diffFilter = delta --color-only
+
+[delta]
+	navigate = true
+	line-numbers = true
+	side-by-side = false
+
+[merge]
+	conflictstyle = zdiff3
+
+[diff]
+	colorMoved = default
 
 [push]
 	autoSetupRemote = true
