@@ -22,7 +22,7 @@ if type -q fd; and type -q fzf
         else
             set preview_cmd 'cat {}'
         end
-        fd --type f --hidden --follow --exclude .git $argv | fzf --select-1 --preview "$preview_cmd"
+        fd --type f --hidden --follow --exclude .git $argv | fzf --select-1 --preview "$preview_cmd" --preview-window 'right,60%,<80(up,60%)'
     end
 end
 
