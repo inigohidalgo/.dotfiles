@@ -3,6 +3,16 @@
 #
 # --set-cursor and adding `%` will move the cursor to that location
 
+# zoxide: frecency-based cd. `z foo` jumps to best match, `zi` opens fzf picker.
+if type -q zoxide
+    zoxide init fish | source
+end
+
+# fzf: Ctrl-T (file picker), Ctrl-R (history), Alt-C (cd picker)
+if type -q fzf
+    fzf --fish | source
+end
+
 abbr -a ..2 "cd ../.."
 abbr -a ..3 "cd ../../.."
 abbr -a ..4 "cd ../../../.."
