@@ -13,6 +13,28 @@ if type -q fzf
     fzf --fish | source
 end
 
+# ff: fuzzy-find a file with fd + fzf (bat preview), print path to stdout
+if type -q fd; and type -q fzf
+    function ff --description "fuzzy file finder (fd + fzf), prints selection"
+        set -l preview_cmd
+        if type -q bat
+            set preview_cmd 'bat --style=numbers --color=always --line-range=:200 {}'
+        else
+            set preview_cmd 'cat {}'
+        end
+        fd --type f --hidden --follow --exclude .git $argv | fzf --preview "$preview_cmd"
+    end
+end
+
+# batf: view an ff-picked file with bat
+if type -q bat
+    function batf --description "ff piped into bat"
+        set -l file (ff $argv)
+        or return
+        bat -- $file
+    end
+end
+
 abbr -a ..2 "cd ../.."
 abbr -a ..3 "cd ../../.."
 abbr -a ..4 "cd ../../../.."
