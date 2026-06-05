@@ -11,12 +11,13 @@ git clone <clone_url> <path>
 ### Install
 
 ```bash
-./install.sh install fish home   # ~/.config/fish/config.fish
-./install.sh install bash work   # ~/.bashrc
-./install.sh install git home    # ~/.gitconfig
+./install.sh install fish home    # ~/.config/fish/config.fish
+./install.sh install bash work    # ~/.bashrc
+./install.sh install git home     # ~/.gitconfig
+./install.sh install tmux local   # ~/.config/tmux/tmux.conf
 ```
 
-Profiles: `home` (mac) or `work` (wsl). Each profile sources a different set of modules.
+Profiles: `home` (mac) or `work` (wsl) for fish/bash/git; `local` (outer) or `remote` (inner, nested over SSH) for tmux — see `tmux/README.md`. Each profile sources a different set of modules.
 
 For `git`, both identities (`git/identity-personal`, `git/identity-work`) are wired up regardless of profile — the profile only controls which one is the default and which `gitdir:` paths trigger the override:
 

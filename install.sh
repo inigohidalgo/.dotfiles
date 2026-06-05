@@ -13,6 +13,10 @@ FISH_WORK="$FISH_HOME argo az claude-profiles"
 BASH_HOME="functions"
 BASH_WORK="$BASH_HOME install_packages"
 
+# tmux: host file sourced last so machine divergence is an override, not a fork
+TMUX_LOCAL="options keys workflows theme host-local"
+TMUX_REMOTE="options keys workflows theme host-remote"
+
 # git: identity defaults flip per profile, "other" identity is wired via includeIf
 GIT_HOME_DEFAULT="personal"
 GIT_HOME_OVERRIDE_GITDIRS="~/dev/repos/axpo/"
@@ -20,8 +24,9 @@ GIT_WORK_DEFAULT="work"
 GIT_WORK_OVERRIDE_GITDIRS="~/dev/repos/ihr/ ~/plan/"
 
 usage() {
-    echo "Usage: $0 <install|uninstall> <fish|bash|git> [home|work]"
+    echo "Usage: $0 <install|uninstall> <fish|bash|git|tmux> [profile]"
     echo "  profile is required for install, ignored for uninstall"
+    echo "  profiles: fish/bash/git → home|work, tmux → local|remote"
     exit 1
 }
 
@@ -39,11 +44,25 @@ git_rc() {
     echo "$HOME/.gitconfig"
 }
 
+tmux_rc() {
+    local rc="$HOME/.config/tmux/tmux.conf"
+    mkdir -p "$(dirname "$rc")"
+    echo "$rc"
+}
+
 get_rc() {
     case "$1" in
         fish) fish_rc ;;
         bash) bash_rc ;;
         git)  git_rc  ;;
+        tmux) tmux_rc ;;
+    esac
+}
+
+valid_profiles() {
+    case "$1" in
+        tmux) echo "local remote" ;;
+        *)    echo "home work" ;;
     esac
 }
 
@@ -78,6 +97,15 @@ gen_block() {
             echo "export DOTFILE_DIR=\"$dir\""
             for mod in $modules; do
                 echo "source \"\$DOTFILE_DIR/${mod}${ext}\""
+            done
+            echo "$MARKER_END"
+            ;;
+        tmux)
+            modules="$(get_modules "$shell" "$profile")"
+            dir="$SCRIPT_DIR/tmux"
+            echo "$MARKER_BEGIN"
+            for mod in $modules; do
+                echo "source-file \"$dir/${mod}.conf\""
             done
             echo "$MARKER_END"
             ;;
@@ -159,13 +187,13 @@ uninstall() {
 action="$1"
 shell="$2"
 
-[[ "$shell" != "fish" && "$shell" != "bash" && "$shell" != "git" ]] && usage
+[[ "$shell" != "fish" && "$shell" != "bash" && "$shell" != "git" && "$shell" != "tmux" ]] && usage
 
 case "$action" in
     install)
         [[ $# -ne 3 ]] && usage
         profile="$3"
-        [[ "$profile" != "home" && "$profile" != "work" ]] && usage
+        [[ " $(valid_profiles "$shell") " != *" $profile "* ]] && usage
         install "$shell" "$profile"
         ;;
     uninstall)
