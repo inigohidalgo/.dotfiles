@@ -9,8 +9,9 @@ if type -q zoxide
 end
 
 # fzf: Ctrl-T (file picker), Ctrl-R (history), Alt-C (cd picker)
+# --fish needs fzf >= 0.48; older versions error, so silence and skip bindings
 if type -q fzf
-    fzf --fish | source
+    fzf --fish 2>/dev/null | source
 end
 
 # ff: fuzzy-find a file with fd + fzf (bat preview), print path to stdout
