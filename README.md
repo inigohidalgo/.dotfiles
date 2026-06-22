@@ -33,4 +33,24 @@ For `git`, both identities (`git/identity-personal`, `git/identity-work`) are wi
 ./install.sh uninstall tmux
 ```
 
-The script appends a marked block (`# <<< dotfiles >>>`) to the rc file (or `~/.gitconfig`). Uninstall removes exactly that block.
+## How it works
+
+Install is **not** symlink-based. `install.sh` appends a marker block (`# <<<
+dotfiles >>>`) of `source` / `source-file` / `include` lines to the target rc
+file (`~/.config/fish/config.fish`, `~/.bashrc`, `~/.gitconfig`, or
+`~/.config/tmux/tmux.conf`); uninstall removes exactly that block.
+
+The block points at the live files in this repo, which the shell reads on every
+startup. So:
+
+- **Editing an existing module** → no reinstall; the next shell (or `prefix R`
+  for tmux) picks it up.
+- **Adding / removing / renaming a module** → first update the profile's module
+  list at the top of `install.sh` (`FISH_*`, `BASH_*`, `TMUX_*` — these decide
+  which modules each profile sources), then `uninstall` + `install` to
+  regenerate the block.
+
+`fish/.fish` and `sh/.sh` are standalone entrypoints for `source`-ing a whole
+dir by hand — convenient, but **not used by `install.sh`**, which builds its own
+source list from the profile variables. Editing them does nothing to an
+installed setup.
