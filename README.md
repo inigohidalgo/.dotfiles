@@ -30,6 +30,7 @@ For `git`, both identities (`git/identity-personal`, `git/identity-work`) are wi
 ./install.sh uninstall fish
 ./install.sh uninstall bash
 ./install.sh uninstall git
+./install.sh uninstall tmux
 ```
 
 The script appends a marked block (`# <<< dotfiles >>>`) to the rc file (or `~/.gitconfig`). Uninstall removes exactly that block.

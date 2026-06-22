@@ -44,6 +44,24 @@ then `prefix R` (or `tmux kill-server && tmux` for a clean start — required
 for changes to the server PATH fix). No rsync, no parallel copies; drift
 shows up as a dirty worktree instead of silently diverging.
 
+## Reload vs reinstall
+
+Install is **not** symlink-based. It writes `~/.config/tmux/tmux.conf` as a
+marker block of `source-file` lines pointing at the absolute paths of the
+module files in this repo. tmux reads the live repo files on every load, so:
+
+- **Editing a setting in an existing module** (`options.conf`, `keys.conf`,
+  …) → just reload with `prefix R`. The `source-file` line already points at
+  that file. This is the common case.
+- **Adding / removing / renaming a module file** → reinstall. The entry point
+  only sources the modules listed in `TMUX_LOCAL` / `TMUX_REMOTE` in
+  `install.sh`, baked in at install time. Update that list, then regenerate
+  the entry point. Install refuses to overwrite an existing block, so:
+
+  ```bash
+  ./install.sh uninstall tmux && ./install.sh install tmux local
+  ```
+
 ## Prereqs
 
 - **tmux ≥ 3.4** — `workflows.conf` uses `run-shell -E` (3.4+). Older tmux
