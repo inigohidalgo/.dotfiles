@@ -105,6 +105,12 @@ function mdview --description "Render a markdown file to HTML/PDF, or read it in
     end
 
     set -l opts --defaults $mdview_assets/$fmt.yaml
+    # pandoc resolves relative images against the working directory, not the
+    # input file -- so `mdview sub/dir/doc.md` embeds nothing and still exits 0.
+    # Prepending the doc's own directory fixes that; pandoc keeps the working
+    # directory as a fallback. Deliberately not `path resolve`: that would break
+    # symlinked docs whose images sit beside the symlink, not the target.
+    set -a opts --resource-path (path dirname "$src")
     set -q _flag_toc; and set -a opts --toc --toc-depth=3
 
     # html.yaml resolves its stylesheet through this
