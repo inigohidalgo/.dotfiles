@@ -1,0 +1,18 @@
+# mdview: markdown -> PDF via the typst engine (fast, no LaTeX)
+from: gfm+tex_math_dollars+footnotes+definition_lists+smart
+to: pdf
+pdf-engine: typst
+highlight-style: tango
+wrap: preserve
+variables:
+  margin:
+    x: 2.2cm
+    y: 2.2cm
+  papersize: a4
+  fontsize: 11pt
+  linestretch: 1.15
+  page-numbering: "1"
+  # typst's default serif lacks ☐/☒ used by gfm task lists
+  header-includes:
+    - '#show regex("[☐☒]"): set text(font: "Apple Symbols")'
+

@@ -7,7 +7,7 @@ MARKER_END="# <<< /dotfiles >>>"
 
 # --- profiles: module lists per shell and profile ---
 
-FISH_HOME="env fs git nav python ssh utils"
+FISH_HOME="env fs git mdview nav python ssh utils"
 FISH_WORK="$FISH_HOME argo az claude-profiles"
 
 BASH_HOME="functions"

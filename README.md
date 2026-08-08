@@ -50,6 +50,11 @@ startup. So:
   which modules each profile sources), then `uninstall` + `install` to
   regenerate the block.
 
+A module needing more than shell code keeps its assets in a sibling dir named
+after it — `fish/mdview/` holds the pandoc defaults, CSS, and AppleScript that
+`fish/mdview.fish` drives, resolved through `$DOTFILE_DIR`, so nothing depends
+on a path outside the repo. (`mdview` needs `pandoc`, `typst`, and `glow`.)
+
 `fish/.fish` and `sh/.sh` are standalone entrypoints for `source`-ing a whole
 dir by hand — convenient, but **not used by `install.sh`**, which builds its own
 source list from the profile variables. Editing them does nothing to an

@@ -1,0 +1,14 @@
+# mdview: markdown -> self-contained HTML (GitHub look, light/dark aware)
+from: gfm+tex_math_dollars+footnotes+definition_lists+smart
+to: html5
+standalone: true
+embed-resources: true
+html-math-method: mathml
+highlight-style: tango
+wrap: preserve
+# mdview exports MDVIEW_ASSETS before invoking pandoc, which interpolates it
+# here -- so this file carries no machine-specific paths
+css:
+  - ${MDVIEW_ASSETS}/github-body.css
+variables:
+  lang: en
