@@ -11,11 +11,24 @@ FISH_HOME="env fs git mdview nav python ssh utils"
 FISH_WORK="$FISH_HOME argo az claude-profiles"
 
 BASH_HOME="functions"
-BASH_WORK="$BASH_HOME install_packages"
+# Inert for now — no WSL-specific bash modules exist yet (unlike FISH_WORK,
+# which already diverges from FISH_HOME). Placeholder for when bash grows
+# its own work-only additions.
+BASH_WORK="$BASH_HOME"
+# dslab_startup/code_tunnel are function *definitions* — safe to source, do
+# nothing until called. install_packages.sh is deliberately NOT here: per
+# its own header it's a backup of a script that lives elsewhere on that
+# machine (/home/jovyan/system_setup/install-packages.sh) and is only ever
+# meant to be sudo-run standalone (see dslab_startup's own call to it) — it
+# does an unconditional root-check-and-exit at the top level, so sourcing it
+# anywhere kills the sourcing shell outright. Opt into this profile by name;
+# nothing here should ever leak into home/work.
+BASH_DSLAB="$BASH_HOME dslab_startup code_tunnel"
 
 # tmux: host file sourced last so machine divergence is an override, not a fork
 TMUX_LOCAL="options keys workflows theme host-local"
 TMUX_REMOTE="options keys workflows theme host-remote"
+TMUX_CONTAINER="options keys workflows theme host-container"
 
 # git: identity defaults flip per profile, "other" identity is wired via includeIf
 GIT_HOME_DEFAULT="personal"
@@ -26,25 +39,53 @@ GIT_WORK_OVERRIDE_GITDIRS="~/dev/repos/ihr/ ~/plan/"
 usage() {
     echo "Usage: $0 <install|uninstall> <fish|bash|git|tmux> [profile]"
     echo "  profile is required for install, ignored for uninstall"
-    echo "  profiles: fish/bash/git → home|work, tmux → local|remote"
+    echo "  profiles: fish/git → home|work, bash → home|work|dslab, tmux → local|remote|container"
     exit 1
 }
 
 fish_rc() {
-    local rc="$HOME/.config/fish/config.fish"
+    # fish itself resolves config.fish via $XDG_CONFIG_HOME/fish (falling back
+    # to ~/.config/fish) — mirror that instead of hardcoding ~/.config, so a
+    # machine that redirects XDG_CONFIG_HOME to durable storage (e.g. an
+    # ephemeral-$HOME container) gets a dotfiles install that survives too.
+    # Unset anywhere else → identical to the old hardcoded path.
+    local rc="${XDG_CONFIG_HOME:-$HOME/.config}/fish/config.fish"
     mkdir -p "$(dirname "$rc")"
     echo "$rc"
 }
 
 bash_rc() {
-    echo "$HOME/.bashrc"
+    # No XDG equivalent for bash. DOTFILES_BASH_RC is a generic escape hatch
+    # for a machine whose ~/.bashrc isn't durable/writable-as-final-home (e.g.
+    # it's regenerated on every boot but itself sources a durable file) —
+    # point the var at that durable file. Unset → today's ~/.bashrc.
+    local rc="${DOTFILES_BASH_RC:-$HOME/.bashrc}"
+    mkdir -p "$(dirname "$rc")"
+    echo "$rc"
 }
 
 git_rc() {
-    echo "$HOME/.gitconfig"
+    # git reads $XDG_CONFIG_HOME/git/config *and* ~/.gitconfig, merging them
+    # (single-valued keys in ~/.gitconfig win on conflict) — so when
+    # XDG_CONFIG_HOME is set, install there instead: durable if that's been
+    # redirected, and it layers cleanly on top of whatever ~/.gitconfig
+    # already holds. Unset → today's ~/.gitconfig, unchanged.
+    if [[ -n "${XDG_CONFIG_HOME:-}" ]]; then
+        local rc="$XDG_CONFIG_HOME/git/config"
+        mkdir -p "$(dirname "$rc")"
+        echo "$rc"
+    else
+        echo "$HOME/.gitconfig"
+    fi
 }
 
 tmux_rc() {
+    # No override hook here, unlike the other three: tmux's own config-file
+    # search hardcodes ~/.config/tmux/tmux.conf (confirmed via `tmux -vv` —
+    # it ignores $XDG_CONFIG_HOME even though tmux passes it through to the
+    # server). Nothing written elsewhere would ever actually get read, so on
+    # a machine with an ephemeral $HOME, the fix isn't a different target —
+    # it's re-running this install after every recreate.
     local rc="$HOME/.config/tmux/tmux.conf"
     mkdir -p "$(dirname "$rc")"
     echo "$rc"
@@ -61,7 +102,8 @@ get_rc() {
 
 valid_profiles() {
     case "$1" in
-        tmux) echo "local remote" ;;
+        tmux) echo "local remote container" ;;
+        bash) echo "home work dslab" ;;
         *)    echo "home work" ;;
     esac
 }
