@@ -10,15 +10,6 @@ if not set -q XDG_CONFIG_HOME
     set -gx XDG_CONFIG_HOME "$HOME/.config"
 end
 
-# clauder: relocate its own durable storage to the workspace mount when
-# running inside a Beacon container -- $BEACON_USER_DIR only exists there,
-# and unlike $HOME (wiped/regenerated on every container recreate) it's
-# NFS-backed and survives. Unset everywhere else (the Mac), so this is a
-# no-op there. See workbench's src/clauder/paths.py for what it controls.
-if set -q BEACON_USER_DIR
-    set -gx CLAUDER_USER_HOME $BEACON_USER_DIR
-end
-
 function remove_substring_from_path
     set substring $argv[1]
     set matching_indices

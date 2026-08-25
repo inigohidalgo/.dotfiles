@@ -5,6 +5,14 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 MARKER_BEGIN="# <<< dotfiles >>>"
 MARKER_END="# <<< /dotfiles >>>"
 
+# This script is not the only installer that writes marker blocks into these rc
+# files. `clauder install` writes its own, namespaced `# <<< clauder >>>`, and
+# resolves its target rc through the *same three variables* the *_rc() helpers
+# below use: DOTFILES_BASH_RC, XDG_CONFIG_HOME, ZDOTDIR. DOTFILES_BASH_RC keeps
+# its name there even though clauder is not this repo, precisely so that a
+# machine which has told one installer where its durable bashrc lives has told
+# both. Renaming it here silently relocates half of that machine's install.
+
 # --- profiles: module lists per shell and profile ---
 
 FISH_HOME="env fs git mdview nav python ssh utils"
