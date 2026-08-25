@@ -31,10 +31,23 @@ TMUX_REMOTE="options keys workflows theme host-remote"
 TMUX_CONTAINER="options keys workflows theme host-container"
 
 # git: identity defaults flip per profile, "other" identity is wired via includeIf
+#
+# The ~/ anchor is deliberate where it appears and deliberately absent where it
+# does not. Git prepends **/ to a gitdir: pattern that does not start with ~/,
+# ./ or /, and appends ** to one ending in /. So "dev/repos/ihr/" becomes
+# **/dev/repos/ihr/**, which matches on a machine where the tree hangs off $HOME
+# *and* on one where it does not (the beacon container keeps it on NFS, where
+# the ~/-anchored form silently never fired and every repo resolved to the work
+# identity). ihr is a container of repos, so recursive is what it wants.
+#
+# "~/plan/" stays anchored: unanchored it would become **/plan/**, matching any
+# repo nested under any directory named plan anywhere on the box. If it ever
+# needs to be portable, the narrow spelling is "plan/.git" — matching only a
+# repo whose own root directory is called plan.
 GIT_HOME_DEFAULT="personal"
 GIT_HOME_OVERRIDE_GITDIRS="~/dev/repos/axpo/"
 GIT_WORK_DEFAULT="work"
-GIT_WORK_OVERRIDE_GITDIRS="~/dev/repos/ihr/ ~/plan/"
+GIT_WORK_OVERRIDE_GITDIRS="dev/repos/ihr/ ~/plan/"
 
 usage() {
     echo "Usage: $0 <install|uninstall> <fish|bash|git|tmux> [profile]"
