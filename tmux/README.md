@@ -77,6 +77,12 @@ module files in this repo. tmux reads the live repo files on every load, so:
   tmux's own default (`customize-mode -Z`) instead of launching clauder.
   Confirmed on a 3.2a container build — not a hard crash like the flag name
   might suggest, just that one binding silently not existing.
+- **`allow-passthrough` needs tmux ≥ 3.3** — `options.conf` sets it
+  unconditionally, so the same older tmux also logs `invalid option:
+  allow-passthrough` at config-load time. Same shape of failure as `bind C`
+  above: that one `set` is skipped, everything after it still loads. So on the
+  3.2a container expect *two* errors on load, both benign and both explained
+  by this section rather than by anything wrong with the install.
 - Remote is Intel (`/usr/local/bin/tmux`), local is ARM (`/opt/homebrew`).
   The PATH fix in `options.conf` handles both — keep it prefix-agnostic. It's
   a harmless no-op on `container` (plain Linux PATH, no Homebrew).
