@@ -18,7 +18,9 @@ MARKER_END="# <<< /dotfiles >>>"
 FISH_HOME="env fs git mdview nav python ssh utils"
 FISH_WORK="$FISH_HOME argo az claude-profiles"
 
-BASH_HOME="functions"
+# `fish` last, and last in every bash profile: it execs fish, so nothing after
+# it in the rc runs. See sh/fish.sh.
+BASH_HOME="functions fish"
 # Inert for now — no WSL-specific bash modules exist yet (unlike FISH_WORK,
 # which already diverges from FISH_HOME). Placeholder for when bash grows
 # its own work-only additions.
@@ -31,7 +33,7 @@ BASH_WORK="$BASH_HOME"
 # does an unconditional root-check-and-exit at the top level, so sourcing it
 # anywhere kills the sourcing shell outright. Opt into this profile by name;
 # nothing here should ever leak into home/work.
-BASH_DSLAB="$BASH_HOME dslab_startup code_tunnel"
+BASH_DSLAB="functions dslab_startup code_tunnel fish"
 
 # tmux: host file sourced last so machine divergence is an override, not a fork
 TMUX_LOCAL="options keys workflows theme host-local"

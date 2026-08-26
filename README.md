@@ -19,7 +19,7 @@ git clone <clone_url> <path>
 
 Profiles: `home` (mac) or `work` (wsl) for fish/git; same for bash, plus a third, `dslab`, opt-in only by name — see below; `local` (outer), `remote` (inner, nested over SSH), or `container` (browser-based IDE terminal, e.g. code-server) for tmux — see `tmux/README.md`. Each profile sources a different set of modules.
 
-`bash`'s `work` is currently **inert** — identical module list to `home` (just `functions`). Unlike fish, where `work` already pulls in real additions (`argo`, `az`, `claude-profiles`), bash has no work-only modules yet; `work` exists as the parallel placeholder for whenever it does. `dslab` is a separate, unrelated third profile (a JupyterHub/DSLab container, `jovyan` user, PVC-backed home) — it pulls in `dslab_startup`/`code_tunnel` (function definitions, safe to source) but deliberately never `install_packages` (a standalone `sudo`-run provisioner, not something to source into a shell — see the comment on `BASH_DSLAB` in `install.sh`). Since it targets a machine topology this repo otherwise doesn't touch, it only ever activates if you explicitly `install bash dslab`.
+`bash`'s `work` is currently **inert** — identical module list to `home` (`functions`, `fish`). Unlike fish, where `work` already pulls in real additions (`argo`, `az`, `claude-profiles`), bash has no work-only modules yet; `work` exists as the parallel placeholder for whenever it does. `dslab` is a separate, unrelated third profile (a JupyterHub/DSLab container, `jovyan` user, PVC-backed home) — it pulls in `dslab_startup`/`code_tunnel` (function definitions, safe to source) but deliberately never `install_packages` (a standalone `sudo`-run provisioner, not something to source into a shell — see the comment on `BASH_DSLAB` in `install.sh`). Since it targets a machine topology this repo otherwise doesn't touch, it only ever activates if you explicitly `install bash dslab`.
 
 For `git`, both identities (`git/identity-personal`, `git/identity-work`) are wired up regardless of profile — the profile only controls which one is the default and which `gitdir:` paths trigger the override:
 
@@ -35,6 +35,28 @@ The paths above (`~/.config/fish/config.fish`, `~/.bashrc`, `~/.config/tmux/tmux
 - **tmux**: no override — tmux's own config search hardcodes `~/.config/tmux/tmux.conf` regardless of `$XDG_CONFIG_HOME` (verified with `tmux -vv`), so there's nowhere else to point it.
 
 This matters on a machine where `$HOME` itself isn't durable (wiped/regenerated on some external trigger, e.g. a container recreate) but something else is — set `$XDG_CONFIG_HOME` and/or `DOTFILES_BASH_RC` to that durable location *before* running install, and fish/git/bash land there instead. tmux has no such escape hatch — on that kind of machine, re-run `install.sh install tmux <profile>` after every reset instead (it's idempotent-safe to script: it refuses to touch an rc file that already has the block).
+
+### Landing in fish from bash
+
+`sh/fish.sh` `exec`s fish at the end of an interactive bash's rc. It's last in
+every `BASH_*` list, and it has to stay there: `exec` never returns, so anything
+after it in the rc — including another installer's marker block — never runs.
+For the same reason the dotfiles block wants to be last in the rc file.
+
+Why here rather than pointing tmux's `default-shell`, or the terminal emulator,
+straight at fish: on a machine where `$HOME` is wiped and regenerated, bash's rc
+chain is doing real work on the way past — it re-reads the machine's own rc,
+which is what redirects the `$HOME`-relative defaults onto durable storage.
+Skipping it doesn't fail loudly. A tmux server's environment is a snapshot
+frozen at server start and never refreshed, so a fish launched directly by tmux
+inherits a stale *subset*, comes up looking healthy, and quietly reads some
+state from the wrong place. Going through bash re-establishes the table on every
+single pane.
+
+Inert where fish isn't installed, and on a machine whose `$SHELL` is already
+fish (bash's rc never runs, so there's nothing to hand off). To get a bash shell
+anyway: type `bash` (the handoff exports a marker, so the child skips it), or
+set `DOTFILES_NO_FISH=1`.
 
 ### Uninstall
 

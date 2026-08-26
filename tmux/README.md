@@ -42,6 +42,27 @@ override, never a forked copy. Install generates the entry point
 Inner also drops `set-titles` (outer owns the terminal title) and the
 pane-border title row (outer already labels the SSH pane — it would stack).
 
+## Pane shell
+
+Panes run fish, reached *through* bash rather than instead of it: `host-container.conf`
+pins `default-shell` to `/bin/bash`, and `.dotfiles/sh/fish.sh` `exec`s fish at
+the end of bash's rc. The repo README has the reasoning; the short version is
+that on the container bash's rc is what redirects `$HOME`-relative defaults onto
+durable storage, and a tmux server's environment is a frozen snapshot, so a pane
+that skipped bash would inherit a stale subset and fail quietly.
+
+Pinned in the host file rather than `options.conf` because it isn't true
+everywhere — on the Mac `$SHELL` is already fish, panes are fish directly, and
+the handoff never runs.
+
+**Known broken here:** `bind b` and `bind M-b` in `workflows.conf` are written
+in fish and run under `default-shell`, which on this machine is now explicitly
+bash — so they fail at press time with a syntax error, silently, since a popup's
+exit status isn't surfaced. They work on the Mac. The fix is to extract each
+body into its own `#!/usr/bin/env fish` script and have the binding invoke that;
+wrapping them in `fish -c '...'` inline doesn't survive the escaping, since the
+bodies contain nested single quotes for `awk`.
+
 ## Sync workflow
 
 Edit here → commit → push. On the other machine: `git pull` in the repo,
