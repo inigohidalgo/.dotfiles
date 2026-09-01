@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# Backstop for commit-msg: re-check every commit actually being pushed, so
+# anything created with --no-verify, produced by rebase/cherry-pick, or made
+# before this guard existed still gets caught before it goes public.
+set -euo pipefail
+
+GUARD_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./_email-guard.sh
+. "$GUARD_DIR/_email-guard.sh"
+
+# git feeds "<local ref> <local sha> <remote ref> <remote sha>" per line on
+# stdin; buffer it so a chained repo hook still gets its input.
+stdin_data="$(cat || true)"
+
+# Name the commits carrying a bad address, so the report is actionable.
+# $range is deliberately unquoted below: it may be a multi-word rev-list spec
+# such as "<sha> --not --remotes".
+blame_commits() {
+	local range=$1 addr=$2 sha
+	for sha in $(git rev-list $range 2>/dev/null); do
+		if git log -1 --format='%ae%n%ce%n%B' "$sha" | grep -qiF "$addr"; then
+			printf '      %s  %s\n' "$(git log -1 --format='%h' "$sha")" \
+				"$(git log -1 --format='%s' "$sha")" >&2
+		fi
+	done
+}
+
+if ! guard_disabled && [ -n "$stdin_data" ]; then
+	failed=0
+	while read -r _local_ref local_sha _remote_ref remote_sha; do
+		[ -n "${local_sha:-}" ] || continue
+		is_zero_sha "$local_sha" && continue # ref deletion, nothing to scan
+
+		if is_zero_sha "${remote_sha:-0}"; then
+			# New ref: limit to commits not already published anywhere,
+			# otherwise a first push re-scans the entire history.
+			range="$local_sha --not --remotes"
+		else
+			range="$remote_sha..$local_sha"
+		fi
+
+		# Identities, then message bodies — two walks over the range rather
+		# than three git calls per commit.
+		bad_ident=""
+		for addr in $(git log --format='%ae%n%ce' $range 2>/dev/null | sort -uf); do
+			is_allowed "$addr" || bad_ident="$bad_ident$addr"$'\n'
+		done
+		bad_body="$(git log --format='%B' $range 2>/dev/null | find_disallowed)"
+
+		if [ -n "$bad_ident" ]; then
+			guard_fail "outgoing commits have a disallowed author/committer"
+			printf '%s' "$bad_ident" | while IFS= read -r addr; do
+				[ -n "$addr" ] || continue
+				printf '    %s\n' "$addr" >&2
+				blame_commits "$range" "$addr"
+			done
+			failed=1
+		fi
+		if [ -n "$bad_body" ]; then
+			guard_fail "outgoing commit messages contain a disallowed address"
+			printf '%s\n' "$bad_body" | while IFS= read -r addr; do
+				[ -n "$addr" ] || continue
+				printf '    %s\n' "$addr" >&2
+				blame_commits "$range" "$addr"
+			done
+			failed=1
+		fi
+	done <<<"$stdin_data"
+
+	if [ "$failed" -ne 0 ]; then
+		guard_explain
+		exit 1
+	fi
+fi
+
+printf '%s' "$stdin_data" | chain_repo_hook pre-push "$@"

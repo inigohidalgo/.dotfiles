@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Refuse commits whose author, committer, or message body carries an address
+# that is not on the allowlist in _email-guard.sh.
+set -euo pipefail
+
+GUARD_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./_email-guard.sh
+. "$GUARD_DIR/_email-guard.sh"
+
+msg_file="$1"
+
+# Everything git might keep. Comment lines stay in scope on purpose: cleanup is
+# mode-dependent, and with -m/-F git defaults to `whitespace` and stores `#`
+# lines verbatim, so dropping them here would miss an address that really lands
+# in the commit. Only the region below a scissors line is excluded — that is
+# where `commit -v` parks an uncommented diff that never reaches the message,
+# and scanning it would flag addresses that live in the code.
+msg_payload() {
+	sed -n '/^#.*>8/q;p' "$msg_file"
+}
+
+if ! guard_disabled; then
+	for role in author committer; do
+		case "$role" in
+		author) addr="$(ident_email "$(git var GIT_AUTHOR_IDENT)")" ;;
+		committer) addr="$(ident_email "$(git var GIT_COMMITTER_IDENT)")" ;;
+		esac
+		if [ -n "$addr" ] && ! is_allowed "$addr"; then
+			guard_fail "commit $role is not an allowed address"
+			printf '    %s\n' "$addr" >&2
+			guard_explain
+			exit 1
+		fi
+	done
+
+	bad="$(msg_payload | find_disallowed)"
+	if [ -n "$bad" ]; then
+		guard_fail "commit message body contains a disallowed address"
+		printf '%s\n' "$bad" | sed 's/^/    /' >&2
+		guard_explain
+		exit 1
+	fi
+fi
+
+chain_repo_hook commit-msg "$@"
