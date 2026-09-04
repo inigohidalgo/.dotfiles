@@ -195,8 +195,8 @@ abbr -a ..3 "cd ../../.."
 abbr -a ..4 "cd ../../../.."
 abbr -a ..5 "cd ../../../../.."
 
-abbr -a --set-cursor cdc 'cd $HOME/.config/%'
-abbr -a --set-cursor cdcf 'cd $HOME/.config/fish/%'
+abbr -a --set-cursor cdc 'cd $XDG_CONFIG_HOME/%'
+abbr -a --set-cursor cdcf 'cd $XDG_CONFIG_HOME/fish/%'
 
 abbr -a --set-cursor cdd 'cd $DEV_DIR/%'
 abbr -a --set-cursor cdp 'cd $PLAN_DIR/main/%'

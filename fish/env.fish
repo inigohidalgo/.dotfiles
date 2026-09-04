@@ -1,4 +1,15 @@
 
+# XDG_CONFIG_HOME normalization: fish and git already fall back to
+# $HOME/.config themselves when this is unset (see install.sh's
+# ${XDG_CONFIG_HOME:-$HOME/.config}), but abbreviations (nav.fish's cdc/cdcf)
+# expand as literal text and can't inline that fallback -- make the default
+# explicit here, once, so they have something to reference. No-op wherever
+# XDG_CONFIG_HOME is already set to something else (e.g. this Beacon
+# container, which points it off $HOME entirely onto durable NFS storage).
+if not set -q XDG_CONFIG_HOME
+    set -gx XDG_CONFIG_HOME "$HOME/.config"
+end
+
 function remove_substring_from_path
     set substring $argv[1]
     set matching_indices
