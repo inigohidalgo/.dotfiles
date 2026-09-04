@@ -22,12 +22,21 @@
 #
 # **This module must be sourced last.** `exec` never returns, so anything after
 # it in the rc -- including another installer's marker block -- never runs. Keep
-# it last in every BASH_* list in install.sh, and keep the dotfiles block last
-# in the rc.
+# it last in any BASH_* list that has it in install.sh, and keep the dotfiles
+# block last in the rc.
+#
+# **Opt-in per profile, and deliberately not in home/work.** It ships only with
+# BASH_BEACON_IDE, because the `bash` escape hatch below holds only where the
+# fish you are sitting in was itself reached through this handoff. On a machine
+# whose $SHELL is already fish (both Macs), nothing ever exports the marker, so
+# a typed `bash` would read its rc, find no marker, and exec straight back into
+# fish -- leaving DOTFILES_NO_FISH=1 as the only way to get a bash prompt. The
+# profile list is what keeps that from happening, not a runtime check.
 #
 # Getting a bash shell when you want one:
-#   bash                            # nested; DOTFILES_FISH_SHELL is exported,
-#                                   # so the child skips the handoff
+#   bash                            # DOTFILES_FISH_SHELL is exported before the
+#                                   # exec, so the child inherits it and skips
+#                                   # the handoff
 #   DOTFILES_NO_FISH=1 <launcher>   # opt out entirely
 #   tmux new-window /bin/bash
 #

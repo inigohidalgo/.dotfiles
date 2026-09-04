@@ -2,10 +2,13 @@
 
 One config, three contexts. The local machine runs the *outer* tmux; the
 remote (`inigo-mbp20`) runs an *inner* tmux reached over SSH inside an outer
-pane — always nested, never a bare shell. A third context, `container`, is a
-single non-nested tmux inside a browser-based IDE terminal (e.g. code-server
-in a Docker container) — no outer layer, but its own set of transport quirks
-(see "Sharp edges" below).
+pane — always nested, never a bare shell. A third context, `beacon-ide`, is a
+single non-nested tmux inside Axpo's Beacon IDE (code-server in a browser,
+backed by a Docker container) — no outer layer, but its own set of transport
+quirks (see "Sharp edges" below). Named for the platform, not for "container":
+what the host file overrides is that platform's specifics — an ephemeral
+`$HOME` with durable NFS beside it, and a browser-hosted terminal with its own
+clipboard path — none of which generalize to containers at large.
 
 ## Layout
 
@@ -17,7 +20,7 @@ in a Docker container) — no outer layer, but its own set of transport quirks
 | `theme.conf` | shared — Catppuccin Mocha base; accent + bar shape excluded |
 | `host-local.conf` | prefix `C-a`, titles, blue accent, full status bar |
 | `host-remote.conf` | prefix `M-a`, peach accent, lean ` ssh ` bar |
-| `host-container.conf` | prefix `C-a`, mouse off (see sharp edges), green accent, ` web: ` bar |
+| `host-beacon-ide.conf` | prefix `C-a`, `default-shell` bash (see pane shell), green accent, ` web: ` bar |
 
 The host file is sourced **last**, so machine divergence is a ~15-line
 override, never a forked copy. Install generates the entry point
@@ -26,7 +29,7 @@ override, never a forked copy. Install generates the entry point
 ```bash
 ./install.sh install tmux local       # this machine, outer
 ./install.sh install tmux remote      # inigo-mbp20, inner
-./install.sh install tmux container   # browser-based IDE container
+./install.sh install tmux beacon-ide  # Axpo Beacon IDE, browser-hosted
 ```
 
 ## Why two host files
@@ -44,18 +47,21 @@ pane-border title row (outer already labels the SSH pane — it would stack).
 
 ## Pane shell
 
-Panes run fish, reached *through* bash rather than instead of it: `host-container.conf`
-pins `default-shell` to `/bin/bash`, and `.dotfiles/sh/fish.sh` `exec`s fish at
-the end of bash's rc. The repo README has the reasoning; the short version is
-that on the container bash's rc is what redirects `$HOME`-relative defaults onto
-durable storage, and a tmux server's environment is a frozen snapshot, so a pane
-that skipped bash would inherit a stale subset and fail quietly.
+Panes run fish, reached *through* bash rather than instead of it:
+`host-beacon-ide.conf` pins `default-shell` to `/bin/bash`, and
+`.dotfiles/sh/fish.sh` `exec`s fish at the end of bash's rc. The repo README has
+the reasoning; the short version is that here bash's rc is what redirects
+`$HOME`-relative defaults onto durable storage, and a tmux server's environment
+is a frozen snapshot, so a pane that skipped bash would inherit a stale subset
+and fail quietly.
 
-Pinned in the host file rather than `options.conf` because it isn't true
-everywhere — on the Mac `$SHELL` is already fish, panes are fish directly, and
-the handoff never runs.
+The two halves are installed together and only together: `sh/fish.sh` ships with
+the `beacon-ide` **bash** profile, this pin with the `beacon-ide` **tmux** host
+file. Neither is in `options.conf` or in `home`/`work`, because neither is true
+elsewhere — on the Mac `$SHELL` is already fish, panes are fish directly, and
+the module isn't installed at all.
 
-The pin alone isn't enough, so `host-container.conf` also does
+The pin alone isn't enough, so `host-beacon-ide.conf` also does
 `set-environment -gu DOTFILES_FISH_SHELL` on every config load. `sh/fish.sh`
 exports that marker before `exec`ing fish so a nested `bash` stays bash instead
 of looping; but if the server is started from a pane that already handed off, it
@@ -67,15 +73,13 @@ it's back. Unsetting at config load repairs it on server start and on `prefix R`
 alike. The `bash` escape hatch is unaffected — there the marker reaches the
 child by ordinary env inheritance from the live fish, not through tmux's table.
 
-Kept in the host file rather than `options.conf`, but for a different reason
-than `default-shell`: the hazard *isn't* container-specific — `sh/fish.sh` is in
-every `BASH_*` profile, so any server anywhere an interactive bash ran could
-freeze the marker the same way. The other machines simply don't exhibit it
-today, and this changes live shell behaviour rather than cosmetics, so it isn't
-worth pushing at hosts with nothing to fix. **If `local` or `remote` ever comes
-up with panes stuck in bash, check `tmux show-environment -g
-DOTFILES_FISH_SHELL` first** — same bug, and the line promotes to
-`options.conf` unchanged.
+Kept in the host file for the same reason as the pin, and the scoping is exact
+rather than merely tidy: the hazard travels with `sh/fish.sh`, which exactly one
+profile installs, so no other machine can freeze a marker it never sets.
+**If a future profile ever gains `fish`, its host file needs this line too** —
+the symptom is every pane silently staying bash, and `tmux show-environment -g
+DOTFILES_FISH_SHELL` is the diagnosis. The line promotes to `options.conf`
+unchanged if it ever becomes true everywhere.
 
 **Known broken here:** `bind b` and `bind M-b` in `workflows.conf` are written
 in fish and run under `default-shell`, which on this machine is now explicitly
@@ -128,7 +132,7 @@ module files in this repo. tmux reads the live repo files on every load, so:
   by this section rather than by anything wrong with the install.
 - Remote is Intel (`/usr/local/bin/tmux`), local is ARM (`/opt/homebrew`).
   The PATH fix in `options.conf` handles both — keep it prefix-agnostic. It's
-  a harmless no-op on `container` (plain Linux PATH, no Homebrew).
+  a harmless no-op on `beacon-ide` (plain Linux PATH, no Homebrew).
 
 ## Known sharp edges
 
@@ -136,12 +140,12 @@ module files in this repo. tmux reads the live repo files on every load, so:
   uses `extended-keys on` (not `always`), so CSI u sequences only reach apps
   that opt in via DECSET 2017 — SSH doesn't. `always` would fix it but risks
   stray CSI u garbage in legacy apps. Trade accepted; paste or a literal
-  `\n` works. On `container`, the same symptom can occur for an unrelated
+  `\n` works. On `beacon-ide`, the same symptom can occur for an unrelated
   reason (whether the browser-hosted terminal emits CSI u for Shift+Enter at
   all) — don't assume the SSH-specific root cause carries over uninvestigated.
 - `bind C` (clauder) and `bind g` (lazygit) error visibly on a machine
   without the tool. Harmless; move to `host-local.conf` if it gets noisy.
-- **Copy-to-system-clipboard doesn't reliably work on `container`, and
+- **Copy-to-system-clipboard doesn't reliably work on `beacon-ide`, and
   there's no full fix — accepted, not resolved**: OSC 52 (tmux's
   `set-clipboard on`, and apps like Claude Code that emit OSC 52 directly)
   gets silently dropped somewhere between the container and the real OS

@@ -17,9 +17,9 @@ git clone <clone_url> <path>
 ./install.sh install tmux local   # ~/.config/tmux/tmux.conf
 ```
 
-Profiles: `home` (mac) or `work` (wsl) for fish/git; same for bash, plus a third, `dslab`, opt-in only by name — see below; `local` (outer), `remote` (inner, nested over SSH), or `container` (browser-based IDE terminal, e.g. code-server) for tmux — see `tmux/README.md`. Each profile sources a different set of modules.
+Profiles: `home` (mac) or `work` (wsl) for fish/git; same for bash, plus `beacon-ide` and `dslab`, both opt-in only by name — see below; `local` (outer), `remote` (inner, nested over SSH), or `beacon-ide` (Axpo's browser-based IDE, code-server in a container) for tmux — see `tmux/README.md`. Each profile sources a different set of modules.
 
-`bash`'s `work` is currently **inert** — identical module list to `home` (`functions`, `fish`). Unlike fish, where `work` already pulls in real additions (`argo`, `az`, `claude-profiles`), bash has no work-only modules yet; `work` exists as the parallel placeholder for whenever it does. `dslab` is a separate, unrelated third profile (a JupyterHub/DSLab container, `jovyan` user, PVC-backed home) — it pulls in `dslab_startup`/`code_tunnel` (function definitions, safe to source) but deliberately never `install_packages` (a standalone `sudo`-run provisioner, not something to source into a shell — see the comment on `BASH_DSLAB` in `install.sh`). Since it targets a machine topology this repo otherwise doesn't touch, it only ever activates if you explicitly `install bash dslab`.
+`bash`'s `work` is currently **inert** — identical module list to `home` (just `functions`). Unlike fish, where `work` already pulls in real additions (`argo`, `az`, `claude-profiles`), bash has no work-only modules yet; `work` exists as the parallel placeholder for whenever it does. `beacon-ide` adds one module to `home`'s list, `fish` — the bash→fish handoff described below, which is opt-in by profile precisely so it can't reach a machine where `$SHELL` is already fish. `dslab` is a separate, unrelated profile (a JupyterHub/DSLab container, `jovyan` user, PVC-backed home) — it pulls in `dslab_startup`/`code_tunnel` (function definitions, safe to source) but deliberately never `install_packages` (a standalone `sudo`-run provisioner, not something to source into a shell — see the comment on `BASH_DSLAB` in `install.sh`). Since it targets a machine topology this repo otherwise doesn't touch, it only ever activates if you explicitly `install bash dslab`.
 
 For `git`, both identities (`git/identity-personal`, `git/identity-work`) are wired up regardless of profile — the profile only controls which one is the default and which `gitdir:` paths trigger the override:
 
@@ -38,10 +38,11 @@ This matters on a machine where `$HOME` itself isn't durable (wiped/regenerated 
 
 ### Landing in fish from bash
 
-`sh/fish.sh` `exec`s fish at the end of an interactive bash's rc. It's last in
-every `BASH_*` list, and it has to stay there: `exec` never returns, so anything
-after it in the rc — including another installer's marker block — never runs.
-For the same reason the dotfiles block wants to be last in the rc file.
+`sh/fish.sh` `exec`s fish at the end of an interactive bash's rc. It ships with
+the `beacon-ide` bash profile only, and it's last in that list — it has to be:
+`exec` never returns, so anything after it in the rc — including another
+installer's marker block — never runs. For the same reason the dotfiles block
+wants to be last in the rc file.
 
 Why here rather than pointing tmux's `default-shell`, or the terminal emulator,
 straight at fish: on a machine where `$HOME` is wiped and regenerated, bash's rc
@@ -53,10 +54,17 @@ inherits a stale *subset*, comes up looking healthy, and quietly reads some
 state from the wrong place. Going through bash re-establishes the table on every
 single pane.
 
-Inert where fish isn't installed, and on a machine whose `$SHELL` is already
-fish (bash's rc never runs, so there's nothing to hand off). To get a bash shell
-anyway: type `bash` (the handoff exports a marker, so the child skips it), or
-set `DOTFILES_NO_FISH=1`.
+Why it's opt-in by profile rather than installed everywhere and left to its own
+guards: the escape hatch only works downstream of a handoff. Typing `bash` gets
+you bash because `sh/fish.sh` exports `DOTFILES_FISH_SHELL` before the `exec`,
+and the child inherits it. On a machine where `$SHELL` is *already* fish, no
+handoff ever ran, so that marker doesn't exist — a typed `bash` would read its
+rc, find nothing set, and `exec` straight back into fish, leaving
+`DOTFILES_NO_FISH=1` as the only way to a bash prompt. Both Macs are that
+machine, so they don't install the module. Not installing it is the guard.
+
+Inert, additionally, where fish isn't on `PATH`, and for anything
+non-interactive — scripts, `bash -c`, `ssh host cmd` all stay bash.
 
 ### Uninstall
 

@@ -18,13 +18,26 @@ MARKER_END="# <<< /dotfiles >>>"
 FISH_HOME="env fs git mdview nav python ssh utils"
 FISH_WORK="$FISH_HOME argo az claude-profiles"
 
-# `fish` last, and last in every bash profile: it execs fish, so nothing after
-# it in the rc runs. See sh/fish.sh.
-BASH_HOME="functions fish"
+BASH_HOME="functions"
 # Inert for now — no WSL-specific bash modules exist yet (unlike FISH_WORK,
 # which already diverges from FISH_HOME). Placeholder for when bash grows
 # its own work-only additions.
 BASH_WORK="$BASH_HOME"
+# Beacon IDE container. `fish` (sh/fish.sh) execs fish at the end of an
+# interactive bash's rc, so panes land in fish by handing off *through* bash
+# rather than launching fish directly — load-bearing here because $HOME is
+# wiped on every container recreate and bash's rc is what redirects the
+# $HOME-relative defaults onto durable storage.
+#
+# Opt-in per profile, never in home/work, and that scoping is the guard, not a
+# nicety: on a machine whose $SHELL is already fish (both Macs) no handoff ever
+# runs, so the marker sh/fish.sh sets to let a nested `bash` stay bash is never
+# exported — typing `bash` there would exec straight back into fish with no way
+# out but DOTFILES_NO_FISH=1.
+#
+# Keep `fish` LAST, here and in any profile that ever gains it: it execs, so
+# nothing after it in the rc runs — including another installer's marker block.
+BASH_BEACON_IDE="$BASH_HOME fish"
 # dslab_startup/code_tunnel are function *definitions* — safe to source, do
 # nothing until called. install_packages.sh is deliberately NOT here: per
 # its own header it's a backup of a script that lives elsewhere on that
@@ -33,12 +46,12 @@ BASH_WORK="$BASH_HOME"
 # does an unconditional root-check-and-exit at the top level, so sourcing it
 # anywhere kills the sourcing shell outright. Opt into this profile by name;
 # nothing here should ever leak into home/work.
-BASH_DSLAB="functions dslab_startup code_tunnel fish"
+BASH_DSLAB="$BASH_HOME dslab_startup code_tunnel"
 
 # tmux: host file sourced last so machine divergence is an override, not a fork
 TMUX_LOCAL="options keys workflows theme host-local"
 TMUX_REMOTE="options keys workflows theme host-remote"
-TMUX_CONTAINER="options keys workflows theme host-container"
+TMUX_BEACON_IDE="options keys workflows theme host-beacon-ide"
 
 # git: identity defaults flip per profile, "other" identity is wired via includeIf
 #
@@ -62,7 +75,7 @@ GIT_WORK_OVERRIDE_GITDIRS="dev/repos/ihr/ ~/plan/"
 usage() {
     echo "Usage: $0 <install|uninstall> <fish|bash|git|tmux> [profile]"
     echo "  profile is required for install, ignored for uninstall"
-    echo "  profiles: fish/git → home|work, bash → home|work|dslab, tmux → local|remote|container"
+    echo "  profiles: fish/git → home|work, bash → home|work|beacon-ide|dslab, tmux → local|remote|beacon-ide"
     exit 1
 }
 
@@ -125,8 +138,8 @@ get_rc() {
 
 valid_profiles() {
     case "$1" in
-        tmux) echo "local remote container" ;;
-        bash) echo "home work dslab" ;;
+        tmux) echo "local remote beacon-ide" ;;
+        bash) echo "home work beacon-ide dslab" ;;
         *)    echo "home work" ;;
     esac
 }
@@ -134,7 +147,10 @@ valid_profiles() {
 get_modules() {
     local shell="$1" profile="$2"
     local var
-    var="$(echo "${shell}_${profile}" | tr '[:lower:]' '[:upper:]')"
+    # `-` folds to `_` so a hyphenated profile survives becoming a variable
+    # name: without it, beacon-ide looks up $BASH_BEACON followed by a literal
+    # -IDE, which under `set -u` aborts the install outright.
+    var="$(echo "${shell}_${profile}" | tr '[:lower:]-' '[:upper:]_')"
     eval echo "\$$var"
 }
 
