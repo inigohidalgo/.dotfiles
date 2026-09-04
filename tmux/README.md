@@ -55,6 +55,28 @@ Pinned in the host file rather than `options.conf` because it isn't true
 everywhere — on the Mac `$SHELL` is already fish, panes are fish directly, and
 the handoff never runs.
 
+The pin alone isn't enough, so `host-container.conf` also does
+`set-environment -gu DOTFILES_FISH_SHELL` on every config load. `sh/fish.sh`
+exports that marker before `exec`ing fish so a nested `bash` stays bash instead
+of looping; but if the server is started from a pane that already handed off, it
+captures the marker into its global environment — the same frozen snapshot the
+design leans on — and re-broadcasts it to every pane. The guard then fires
+server-wide, every pane silently stays bash, and the `default-shell` pin buys
+nothing. Self-perpetuating, too: `kill-server`, restart from a fish pane, and
+it's back. Unsetting at config load repairs it on server start and on `prefix R`
+alike. The `bash` escape hatch is unaffected — there the marker reaches the
+child by ordinary env inheritance from the live fish, not through tmux's table.
+
+Kept in the host file rather than `options.conf`, but for a different reason
+than `default-shell`: the hazard *isn't* container-specific — `sh/fish.sh` is in
+every `BASH_*` profile, so any server anywhere an interactive bash ran could
+freeze the marker the same way. The other machines simply don't exhibit it
+today, and this changes live shell behaviour rather than cosmetics, so it isn't
+worth pushing at hosts with nothing to fix. **If `local` or `remote` ever comes
+up with panes stuck in bash, check `tmux show-environment -g
+DOTFILES_FISH_SHELL` first** — same bug, and the line promotes to
+`options.conf` unchanged.
+
 **Known broken here:** `bind b` and `bind M-b` in `workflows.conf` are written
 in fish and run under `default-shell`, which on this machine is now explicitly
 bash — so they fail at press time with a syntax error, silently, since a popup's
