@@ -38,33 +38,22 @@ This matters on a machine where `$HOME` itself isn't durable (wiped/regenerated 
 
 ### Landing in fish from bash
 
-`sh/fish.sh` `exec`s fish at the end of an interactive bash's rc. It ships with
-the `beacon-ide` bash profile only, and it's last in that list — it has to be:
-`exec` never returns, so anything after it in the rc — including another
-installer's marker block — never runs. For the same reason the dotfiles block
-wants to be last in the rc file.
+`sh/fish.sh` `exec`s fish at the end of an interactive bash's rc, so shells land
+in fish by handing off *through* bash rather than launching fish directly. Why
+through bash, and why opt-in by profile rather than installed everywhere, is
+argued in that file's header. What follows from it:
 
-Why here rather than pointing tmux's `default-shell`, or the terminal emulator,
-straight at fish: on a machine where `$HOME` is wiped and regenerated, bash's rc
-chain is doing real work on the way past — it re-reads the machine's own rc,
-which is what redirects the `$HOME`-relative defaults onto durable storage.
-Skipping it doesn't fail loudly. A tmux server's environment is a snapshot
-frozen at server start and never refreshed, so a fish launched directly by tmux
-inherits a stale *subset*, comes up looking healthy, and quietly reads some
-state from the wrong place. Going through bash re-establishes the table on every
-single pane.
+- It ships with the `beacon-ide` bash profile only. Both Macs already have fish
+  as `$SHELL`, and there the module would leave no way to a bash prompt.
+- It's **last** in that profile's module list, and the dotfiles block wants to
+  be last in the rc file — `exec` never returns, so anything after it,
+  including another installer's marker block, never runs.
+- Inert where fish isn't on `PATH`, and for anything non-interactive: scripts,
+  `bash -c`, `ssh host cmd` all stay bash.
 
-Why it's opt-in by profile rather than installed everywhere and left to its own
-guards: the escape hatch only works downstream of a handoff. Typing `bash` gets
-you bash because `sh/fish.sh` exports `DOTFILES_FISH_SHELL` before the `exec`,
-and the child inherits it. On a machine where `$SHELL` is *already* fish, no
-handoff ever ran, so that marker doesn't exist — a typed `bash` would read its
-rc, find nothing set, and `exec` straight back into fish, leaving
-`DOTFILES_NO_FISH=1` as the only way to a bash prompt. Both Macs are that
-machine, so they don't install the module. Not installing it is the guard.
-
-Inert, additionally, where fish isn't on `PATH`, and for anything
-non-interactive — scripts, `bash -c`, `ssh host cmd` all stay bash.
+Getting a bash prompt: type `bash` (the handoff exports a marker the child
+inherits, so it stays bash), or `DOTFILES_NO_FISH=1 <launcher>` to opt out
+entirely.
 
 ### Uninstall
 

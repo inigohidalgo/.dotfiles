@@ -10,12 +10,11 @@
 # Skipping it does not fail loudly, which is the point. A tmux *server*'s
 # environment is a snapshot frozen when the server started and never refreshed,
 # and panes inherit the snapshot, so a fish launched directly by tmux gets a
-# stale *subset* rather than nothing at all. Measured 2026-08-26 on a server
-# that predated a change to the machine rc: a fresh pane had XDG_CONFIG_HOME
-# (so fish found its config and looked perfectly healthy) but not
-# CLAUDER_USER_HOME (so a downstream tool read state from the wrong directory).
-# Running bash first repairs that on every single pane, because it re-reads the
-# live rc rather than trusting anything cached.
+# stale *subset* rather than nothing at all. Measured 2026-08-26: a fresh pane
+# had XDG_CONFIG_HOME (so fish found its config and looked perfectly healthy)
+# but not CLAUDER_USER_HOME (so a downstream tool read state from the wrong
+# directory). Running bash first repairs that on every single pane, because it
+# re-reads the live rc rather than trusting anything cached.
 #
 # `exec`, not a plain call: bash is replaced rather than left waiting, so the
 # pane exits with fish and #{pane_current_command} reads `fish`.
@@ -38,12 +37,16 @@
 #                                   # exec, so the child inherits it and skips
 #                                   # the handoff
 #   DOTFILES_NO_FISH=1 <launcher>   # opt out entirely
-#   tmux new-window /bin/bash
+#   tmux new-window 'DOTFILES_NO_FISH=1 bash'
 #
-# Guards, in order: interactive only; not `bash -c "..."`, which must stay bash
-# so scripts and tooling are unaffected; not opted out; not already downstream
-# of a handoff; and fish actually installed -- so this is inert, not fatal, on a
-# machine without it.
+# A bare `tmux new-window /bin/bash` is NOT one of them: host-beacon-ide.conf
+# scrubs the marker from the server's environment (deliberately -- see the
+# comment there), so that pane's bash finds nothing set and hands off like any
+# other. Verified by probe.
+#
+# BASH_EXECUTION_STRING keeps `bash -ic "..."` in bash, so scripts and tooling
+# are unaffected; the `command -v fish` check makes this inert, not fatal, on a
+# machine without fish.
 if [[ $- == *i* ]] &&
    [[ -z "${BASH_EXECUTION_STRING:-}" ]] &&
    [[ -z "${DOTFILES_NO_FISH:-}" ]] &&

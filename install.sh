@@ -24,19 +24,13 @@ BASH_HOME="functions"
 # its own work-only additions.
 BASH_WORK="$BASH_HOME"
 # Beacon IDE container. `fish` (sh/fish.sh) execs fish at the end of an
-# interactive bash's rc, so panes land in fish by handing off *through* bash
-# rather than launching fish directly — load-bearing here because $HOME is
-# wiped on every container recreate and bash's rc is what redirects the
-# $HOME-relative defaults onto durable storage.
+# interactive bash's rc; that file's header argues why the handoff goes through
+# bash and why it is opt-in per profile. Two rules bind here:
 #
-# Opt-in per profile, never in home/work, and that scoping is the guard, not a
-# nicety: on a machine whose $SHELL is already fish (both Macs) no handoff ever
-# runs, so the marker sh/fish.sh sets to let a nested `bash` stay bash is never
-# exported — typing `bash` there would exec straight back into fish with no way
-# out but DOTFILES_NO_FISH=1.
-#
-# Keep `fish` LAST, here and in any profile that ever gains it: it execs, so
-# nothing after it in the rc runs — including another installer's marker block.
+#   - Never in home/work. On a machine whose $SHELL is already fish (both Macs)
+#     it would leave no way to a bash prompt but DOTFILES_NO_FISH=1.
+#   - Keep `fish` LAST, here and in any profile that ever gains it: it execs, so
+#     nothing after it in the rc runs — including another installer's block.
 BASH_BEACON_IDE="$BASH_HOME fish"
 # dslab_startup/code_tunnel are function *definitions* — safe to source, do
 # nothing until called. install_packages.sh is deliberately NOT here: per

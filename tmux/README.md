@@ -49,8 +49,8 @@ pane-border title row (outer already labels the SSH pane — it would stack).
 
 Panes run fish, reached *through* bash rather than instead of it:
 `host-beacon-ide.conf` pins `default-shell` to `/bin/bash`, and
-`.dotfiles/sh/fish.sh` `exec`s fish at the end of bash's rc. The repo README has
-the reasoning; the short version is that here bash's rc is what redirects
+`.dotfiles/sh/fish.sh` `exec`s fish at the end of bash's rc. That file's header
+has the reasoning; the short version is that here bash's rc is what redirects
 `$HOME`-relative defaults onto durable storage, and a tmux server's environment
 is a frozen snapshot, so a pane that skipped bash would inherit a stale subset
 and fail quietly.
@@ -62,32 +62,25 @@ elsewhere — on the Mac `$SHELL` is already fish, panes are fish directly, and
 the module isn't installed at all.
 
 The pin alone isn't enough, so `host-beacon-ide.conf` also does
-`set-environment -gu DOTFILES_FISH_SHELL` on every config load. `sh/fish.sh`
-exports that marker before `exec`ing fish so a nested `bash` stays bash instead
-of looping; but if the server is started from a pane that already handed off, it
-captures the marker into its global environment — the same frozen snapshot the
-design leans on — and re-broadcasts it to every pane. The guard then fires
-server-wide, every pane silently stays bash, and the `default-shell` pin buys
-nothing. Self-perpetuating, too: `kill-server`, restart from a fish pane, and
-it's back. Unsetting at config load repairs it on server start and on `prefix R`
-alike. The `bash` escape hatch is unaffected — there the marker reaches the
-child by ordinary env inheritance from the live fish, not through tmux's table.
-
-Kept in the host file for the same reason as the pin, and the scoping is exact
-rather than merely tidy: the hazard travels with `sh/fish.sh`, which exactly one
+`set-environment -gu DOTFILES_FISH_SHELL` on every config load: a server started
+from a pane that already handed off otherwise freezes that marker into its
+global environment and re-broadcasts it to every pane, and the pin buys nothing.
+The comment on that line has the mechanism. Kept in the host file for the same
+reason as the pin — the hazard travels with `sh/fish.sh`, which exactly one
 profile installs, so no other machine can freeze a marker it never sets.
+
 **If a future profile ever gains `fish`, its host file needs this line too** —
 the symptom is every pane silently staying bash, and `tmux show-environment -g
 DOTFILES_FISH_SHELL` is the diagnosis. The line promotes to `options.conf`
 unchanged if it ever becomes true everywhere.
 
 **Known broken here:** `bind b` and `bind M-b` in `workflows.conf` are written
-in fish and run under `default-shell`, which on this machine is now explicitly
-bash — so they fail at press time with a syntax error, silently, since a popup's
-exit status isn't surfaced. They work on the Mac. The fix is to extract each
-body into its own `#!/usr/bin/env fish` script and have the binding invoke that;
-wrapping them in `fish -c '...'` inline doesn't survive the escaping, since the
-bodies contain nested single quotes for `awk`.
+in fish and run under `default-shell`, which on this machine is bash — so they
+fail at press time with a syntax error, silently, since a popup's exit status
+isn't surfaced. They work on the Mac. The fix is to extract each body into its
+own `#!/usr/bin/env fish` script and have the binding invoke that; wrapping them
+in `fish -c '...'` inline doesn't survive the escaping, since the bodies contain
+nested single quotes for `awk`.
 
 ## Sync workflow
 
