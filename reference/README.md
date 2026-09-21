@@ -30,7 +30,7 @@ What it holds, and why it isn't in the repo proper:
 These are machine facts, and machine facts are exactly what this repo does not
 carry — it reads variables, guarded, so every branch is inert elsewhere. Keeping
 the file here as an inert snapshot rather than a live module is what keeps that
-true. See `notes/platform/260825-container-config-ownership.md` (not in this
+true. See `notes/workstation/config-ownership.md` (not in this
 repo) for the ownership rule in full.
 
 **Restoring it is not enough on its own.** The blocks inside reference absolute

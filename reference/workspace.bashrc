@@ -21,7 +21,7 @@
 # in the normal IDE+tmux setup — once by code-server's env resolution (bash -l
 # at startup), once by the terminal's shellIntegration init-file, and once by
 # the tmux login shell. Without guards each pass prepends a duplicate set.
-# See notes/260729-platform-persistence-findings.md for the full trace.
+# See notes/workstation/container-durability.md for the full trace.
 
 # Point other package managers' install/global dirs here as well, instead of
 # their defaults under $HOME (ephemeral) or /usr (not writable). These are
@@ -47,13 +47,13 @@ export CARGO_HOME="$BEACON_USER_DIR/.local/cargo"
 # via `set -U`) and *cache* already land on NFS today without this — the
 # platform sets XDG_DATA_HOME/XDG_CACHE_HOME globally to paths under
 # .beaconide/{data,cache} — this just covers the third, previously-unset XDG
-# dir (config). See notes/260729-platform-persistence-findings.md.
+# dir (config). See notes/workstation/container-durability.md.
 #
 # Fixed 2026-08-11: install.sh's fish_rc()/git_rc() now resolve
 # $XDG_CONFIG_HOME themselves (falling back to the old hardcoded paths when
 # it's unset, so other machines this repo installs to are unaffected) —
 # dotfiles-managed fish/git config lands here instead of on ephemeral $HOME.
-# See notes/platform/260729-platform-persistence-findings.md.
+# See notes/workstation/container-durability.md.
 export XDG_CONFIG_HOME="$BEACON_USER_DIR/.config"
 
 # --- Claude Code config (survives container recreate) ---
