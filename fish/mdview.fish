@@ -18,7 +18,7 @@ function mdview --description "Render a markdown file to HTML/PDF, or read it in
             "  -T --term      read in the terminal with glow (writes no file)" \
             "  -p --pdf       render via typst, open in Preview" \
             "  -t --toc       include a table of contents       [html/pdf only]" \
-            "  -o --out FILE  write here; its extension picks the format" \
+            "  -o --out FILE  write here; a .html/.pdf extension picks the format" \
             "  -n --no-open   render only, print the path       [html/pdf only]" \
             "" \
             "window placement (set in ~/.config/fish/config.fish):" \
@@ -74,18 +74,26 @@ function mdview --description "Render a markdown file to HTML/PDF, or read it in
         return 127
     end
 
-    # --out's extension picks the format, unless an explicit flag overrides it
+    # an explicit flag wins; otherwise --out's extension picks the format
     set -l fmt html
-    if set -q _flag_out
+    if set -q _flag_pdf
+        set fmt pdf
+    else if set -q _flag_html
+        set fmt html
+    else if set -q _flag_out
         switch (string lower (path extension "$_flag_out"))
             case .pdf
                 set fmt pdf
             case .html .htm
                 set fmt html
+            case '*'
+                # quietly falling back to html here is how `--out notes.md`
+                # used to write HTML into a markdown file without a word
+                echo "mdview: can't infer the format from --out: $_flag_out" >&2
+                echo "mdview: give it a .html/.pdf extension, or pass --html/--pdf" >&2
+                return 2
         end
     end
-    set -q _flag_html; and set fmt html
-    set -q _flag_pdf; and set fmt pdf
 
     set -l out $_flag_out
     if test -z "$out"
@@ -95,6 +103,14 @@ function mdview --description "Render a markdown file to HTML/PDF, or read it in
         set out $dir/(path change-extension '' (path basename "$src")).$fmt
     else if test -d "$out"
         echo "mdview: --out is a directory: $out" >&2
+        return 2
+    end
+
+    # pandoc reads the input fully before it writes, so aiming the output at it
+    # exits 0 and leaves HTML where the markdown was. `path resolve` so a
+    # symlink or a ../ spelling of the same file is caught too.
+    if test (path resolve "$out") = (path resolve "$src")
+        echo "mdview: refusing to overwrite the input file: $src" >&2
         return 2
     end
 
