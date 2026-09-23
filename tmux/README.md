@@ -16,7 +16,7 @@ clipboard path — none of which generalize to containers at large.
 |---|---|
 | `options.conf` | shared — server PATH fix, indexing, general options, terminal features |
 | `keys.conf` | shared — session/window/pane bindings, `prefix R` reload |
-| `workflows.conf` | shared — clauder/lazygit popups, fzf window switcher (`bind C`/`bind g` are local-tooling-dependent and just error if pressed where the tool is missing) |
+| `workflows.conf` | shared — clauder/lazygit popups, and three `tmx` verbs behind popups (`s` switch, `b` join, `M-b` move) (`bind C`/`bind g` and the `tmx` keys are local-tooling-dependent and just error if pressed where the tool is missing) |
 | `theme.conf` | shared — Catppuccin Mocha base; accent + bar shape excluded |
 | `host-local.conf` | prefix `C-a`, titles, blue accent, full status bar |
 | `host-remote.conf` | prefix `M-a`, peach accent, lean ` ssh ` bar |
@@ -74,13 +74,8 @@ the symptom is every pane silently staying bash, and `tmux show-environment -g
 DOTFILES_FISH_SHELL` is the diagnosis. The line promotes to `options.conf`
 unchanged if it ever becomes true everywhere.
 
-**Known broken here:** `bind b` and `bind M-b` in `workflows.conf` are written
-in fish and run under `default-shell`, which on this machine is bash — so they
-fail at press time with a syntax error, silently, since a popup's exit status
-isn't surfaced. They work on the Mac. The fix is to extract each body into its
-own `#!/usr/bin/env fish` script and have the binding invoke that; wrapping them
-in `fish -c '...'` inline doesn't survive the escaping, since the bodies contain
-nested single quotes for `awk`.
+`b` and `M-b` used to be fish bodies and failed silently here; they are `tmx`
+verbs now, so no shell logic remains to diverge.
 
 ## Sync workflow
 
@@ -110,13 +105,15 @@ module files in this repo. tmux reads the live repo files on every load, so:
 
 ## Prereqs
 
-- **tmux ≥ 3.4** — `workflows.conf` uses `run-shell -E` (3.4+). On an older
-  tmux this specific bind (`bind C`, clauder) fails to *register* at config-load
-  time (`tmux: unknown option -- E` / `usage: run-shell [-bC]...`); the rest
-  of the config still loads and applies fine, `prefix C` just falls back to
-  tmux's own default (`customize-mode -Z`) instead of launching clauder.
-  Confirmed on a 3.2a container build — not a hard crash like the flag name
-  might suggest, just that one binding silently not existing.
+- **tmux ≥ 3.4** — `workflows.conf` uses `run-shell -E` (3.4+) in five
+  bindings: `C`, `F`, `s`, `b` and `M-b`. On an older tmux all five fail to
+  *register* at config-load time (`tmux: unknown option -- E` / `usage:
+  run-shell [-bC]...`); the rest of the config still loads and applies fine,
+  and those keys fall back to tmux's own defaults (`prefix s` becomes the stock
+  session tree, `prefix C` `customize-mode -Z`). Confirmed for `bind C` on a
+  3.2a container build — not a hard crash like the flag name might suggest,
+  just the bindings silently not existing, which is now most of the workflow
+  keys rather than one.
 - **`allow-passthrough` needs tmux ≥ 3.3** — `options.conf` sets it
   unconditionally, so the same older tmux also logs `invalid option:
   allow-passthrough` at config-load time. Same shape of failure as `bind C`
