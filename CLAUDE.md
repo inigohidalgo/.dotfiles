@@ -6,6 +6,8 @@ by `install.sh`.
 @README.md — install, profiles, and how the install mechanism works (marker
 block, live files, edit-vs-reinstall).
 @tmux/README.md — the nested local/remote tmux design and its sharp edges.
+@fish/README.md — inventory of the live fish customizations that come from
+outside this repo (conf.d snippets, installer blocks, vendor completions).
 
 ## Verifying changes
 
