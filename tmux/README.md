@@ -105,8 +105,9 @@ module files in this repo. tmux reads the live repo files on every load, so:
 
 ## Prereqs
 
-- **tmux ≥ 3.4** — `workflows.conf` uses `run-shell -E` (3.4+) in five
-  bindings: `C`, `F`, `s`, `b` and `M-b`. On an older tmux all five fail to
+- **tmux ≥ 3.4** — `workflows.conf` uses `run-shell -E` (3.4+) in seven
+  bindings: `C`, `F`, `s`, `b`, `M-b`, and `w`/`a` in the `deck` table. On an
+  older tmux all seven fail to
   *register* at config-load time (`tmux: unknown option -- E` / `usage:
   run-shell [-bC]...`); the rest of the config still loads and applies fine,
   and those keys fall back to tmux's own defaults (`prefix s` becomes the stock
