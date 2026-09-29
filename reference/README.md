@@ -19,7 +19,7 @@ while this file itself lives on NFS, nothing versions it.
 What it holds, and why it isn't in the repo proper:
 
 - The redirect table — `XDG_CONFIG_HOME`, `CLAUDE_CONFIG_DIR`,
-  `CLAUDER_USER_HOME`, `DOTFILES_BASH_RC`, `NPM_CONFIG_PREFIX`, `GOPATH`,
+  `WB_USER_HOME`, `DOTFILES_BASH_RC`, `NPM_CONFIG_PREFIX`, `GOPATH`,
   `GOBIN`, `CARGO_HOME`, and the `PATH` additions — all derived from
   `$BEACON_USER_DIR`, which only that platform sets.
 - A one-shot call to `inigo/setup/bootstrap.sh`, guarded on an atomic

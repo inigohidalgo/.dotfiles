@@ -12,7 +12,7 @@
 # and panes inherit the snapshot, so a fish launched directly by tmux gets a
 # stale *subset* rather than nothing at all. Measured 2026-08-26: a fresh pane
 # had XDG_CONFIG_HOME (so fish found its config and looked perfectly healthy)
-# but not CLAUDER_USER_HOME (so a downstream tool read state from the wrong
+# but not WB_USER_HOME (so a downstream tool read state from the wrong
 # directory). Running bash first repairs that on every single pane, because it
 # re-reads the live rc rather than trusting anything cached.
 #

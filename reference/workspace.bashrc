@@ -64,11 +64,11 @@ export XDG_CONFIG_HOME="$BEACON_USER_DIR/.config"
 export CLAUDE_CONFIG_DIR="$BEACON_USER_DIR/.claude"
 
 # --- clauder (survives container recreate) ---
-# clauder keeps its own durable storage under $CLAUDER_USER_HOME/.clauder --
+# clauder keeps its own durable storage under $WB_USER_HOME/.clauder --
 # the promoted artifact venvs PATH points at, refs/, state.json, promoted.json.
 # $HOME is regenerated every boot, so without this the install and the runtime
 # disagree about where that directory is and the tree splits in two.
-export CLAUDER_USER_HOME="$BEACON_USER_DIR"
+export WB_USER_HOME="$BEACON_USER_DIR"
 # `clauder install` splices its `claude` shell function into ~/.bashrc, which
 # the platform regenerates on every boot. Point it at this file -- the durable
 # one ~/.bashrc sources -- so the function survives a recreate.
