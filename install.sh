@@ -67,9 +67,9 @@ GIT_WORK_DEFAULT="work"
 GIT_WORK_OVERRIDE_GITDIRS="dev/repos/ihr/ ~/plan/"
 
 usage() {
-    echo "Usage: $0 <install|uninstall> <fish|bash|git|tmux> [profile]"
+    echo "Usage: $0 <install|uninstall> <fish|bash|git|tmux|karabiner> [profile]"
     echo "  profile is required for install, ignored for uninstall"
-    echo "  profiles: fish/git → home|work, bash → home|work|beacon-ide|dslab, tmux → local|remote|beacon-ide"
+    echo "  profiles: fish/git → home|work, bash → home|work|beacon-ide|dslab, tmux → local|remote|beacon-ide, karabiner → home"
     exit 1
 }
 
@@ -134,6 +134,7 @@ valid_profiles() {
     case "$1" in
         tmux) echo "local remote beacon-ide" ;;
         bash) echo "home work beacon-ide dslab" ;;
+        karabiner) echo "home" ;;
         *)    echo "home work" ;;
     esac
 }
@@ -255,6 +256,71 @@ uninstall() {
     remove_block "$rc"
 }
 
+# --- karabiner: the one symlink-based install ---
+#
+# Everything above writes a marker block into an rc file this repo doesn't own
+# outright. Karabiner-Elements has no include mechanism, so there is no block to
+# write: the repo owns the whole config directory instead, and the live config
+# dir becomes a symlink to karabiner/config. Owning it outright is safe because
+# nothing but Karabiner itself writes there — its Settings window rewrites
+# karabiner.json in place, and those edits land in the repo as a `git diff`.
+#
+# Link the directory, never karabiner.json itself: Karabiner's docs are explicit
+# that it fails to detect changes (and so never reloads) when karabiner.json is a
+# symlink. After moving the config, Karabiner-Console-User-Server has to be
+# restarted once before it watches the new location — install does that.
+
+KARABINER_SRC="$SCRIPT_DIR/karabiner/config"
+KARABINER_AGENT="org.pqrs.service.agent.Karabiner-Console-User-Server"
+
+karabiner_dir() {
+    # Karabiner honours XDG_CONFIG_HOME, but from its launchd agents'
+    # environment, not this shell's — so ask launchd, not $XDG_CONFIG_HOME.
+    # Unset there (the normal case) → ~/.config/karabiner.
+    local xdg
+    xdg="$(launchctl getenv XDG_CONFIG_HOME 2>/dev/null || true)"
+    echo "${xdg:-$HOME/.config}/karabiner"
+}
+
+restart_karabiner_agent() {
+    launchctl kickstart -k "gui/$(id -u)/$KARABINER_AGENT" \
+        || echo "warning: could not restart $KARABINER_AGENT — is Karabiner-Elements installed?"
+}
+
+install_karabiner() {
+    local dst
+    dst="$(karabiner_dir)"
+    if [[ -L "$dst" && "$(readlink "$dst")" == "$KARABINER_SRC" ]]; then
+        echo "Already installed: $dst -> $KARABINER_SRC"
+        exit 1
+    fi
+    if [[ -e "$dst" || -L "$dst" ]]; then
+        local aside
+        aside="$dst.pre-dotfiles-$(date +%Y%m%d-%H%M%S)"
+        mv "$dst" "$aside"
+        echo "Moved existing $dst aside to $aside"
+    fi
+    mkdir -p "$(dirname "$dst")"
+    ln -s "$KARABINER_SRC" "$dst"
+    restart_karabiner_agent
+    echo "Linked $dst -> $KARABINER_SRC"
+}
+
+uninstall_karabiner() {
+    # Leave a real copy behind, not nothing: an empty config dir would silently
+    # drop every rule and device grab on Karabiner's next reload.
+    local dst
+    dst="$(karabiner_dir)"
+    if [[ ! -L "$dst" || "$(readlink "$dst")" != "$KARABINER_SRC" ]]; then
+        echo "No dotfiles symlink at $dst"
+        return
+    fi
+    rm "$dst"
+    cp -R "$KARABINER_SRC" "$dst"
+    restart_karabiner_agent
+    echo "Replaced symlink $dst with a copy of $KARABINER_SRC"
+}
+
 # --- main ---
 
 [[ $# -lt 2 ]] && usage
@@ -262,17 +328,25 @@ uninstall() {
 action="$1"
 shell="$2"
 
-[[ "$shell" != "fish" && "$shell" != "bash" && "$shell" != "git" && "$shell" != "tmux" ]] && usage
+[[ "$shell" != "fish" && "$shell" != "bash" && "$shell" != "git" && "$shell" != "tmux" && "$shell" != "karabiner" ]] && usage
 
 case "$action" in
     install)
         [[ $# -ne 3 ]] && usage
         profile="$3"
         [[ " $(valid_profiles "$shell") " != *" $profile "* ]] && usage
-        install "$shell" "$profile"
+        if [[ "$shell" == "karabiner" ]]; then
+            install_karabiner
+        else
+            install "$shell" "$profile"
+        fi
         ;;
     uninstall)
-        uninstall "$shell"
+        if [[ "$shell" == "karabiner" ]]; then
+            uninstall_karabiner
+        else
+            uninstall "$shell"
+        fi
         ;;
     *)
         usage

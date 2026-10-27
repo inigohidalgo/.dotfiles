@@ -15,6 +15,7 @@ git clone <clone_url> <path>
 ./install.sh install bash work    # ~/.bashrc
 ./install.sh install git home     # ~/.gitconfig
 ./install.sh install tmux local   # ~/.config/tmux/tmux.conf
+./install.sh install karabiner home  # ~/.config/karabiner -> karabiner/config (symlink)
 ```
 
 Profiles: `home` (mac) or `work` (wsl) for fish/git; same for bash, plus `beacon-ide` and `dslab`, both opt-in only by name — see below; `local` (outer), `remote` (inner, nested over SSH), or `beacon-ide` (Axpo's browser-based IDE, code-server in a container) for tmux — see `tmux/README.md`. Each profile sources a different set of modules.
@@ -70,6 +71,11 @@ Install is **not** symlink-based. `install.sh` appends a marker block (`# <<<
 dotfiles >>>`) of `source` / `source-file` / `include` lines to the target rc
 file (`~/.config/fish/config.fish`, `~/.bashrc`, `~/.gitconfig`, or
 `~/.config/tmux/tmux.conf`); uninstall removes exactly that block.
+
+The one exception is **karabiner**: Karabiner-Elements has no include
+mechanism, so there's no block to write. Install symlinks the whole
+`~/.config/karabiner` directory to `karabiner/config/` instead, and uninstall
+swaps the symlink for a real copy — see `karabiner/README.md`.
 
 The block points at the live files in this repo, which the shell reads on every
 startup. So:

@@ -1,0 +1,67 @@
+{
+    "profiles": [
+        {
+            "name": "Default profile",
+            "selected": true,
+            "virtual_hid_keyboard": { "keyboard_type_v2": "ansi" },
+            "devices": [
+                {
+                    "identifiers": {
+                        "vendor_id": 1133,
+                        "product_id": 45091,
+                        "is_keyboard": true,
+                        "is_pointing_device": true
+                    },
+                    "ignore": false
+                }
+            ],
+            "complex_modifications": {
+                "rules": [
+                    {
+                        "description": "MX Master 3 thumb button -> right_control (Wispr push-to-talk); swallow its Tab",
+                        "manipulators": [
+                            {
+                                "type": "basic",
+                                "conditions": [
+                                    {
+                                        "type": "device_if",
+                                        "identifiers": [
+                                            {
+                                                "vendor_id": 1133,
+                                                "product_id": 45091
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "from": {
+                                    "key_code": "left_command",
+                                    "modifiers": { "optional": ["any"] }
+                                },
+                                "to": [{ "key_code": "right_control" }]
+                            },
+                            {
+                                "type": "basic",
+                                "conditions": [
+                                    {
+                                        "type": "device_if",
+                                        "identifiers": [
+                                            {
+                                                "vendor_id": 1133,
+                                                "product_id": 45091
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "from": {
+                                    "key_code": "tab",
+                                    "modifiers": { "optional": ["any"] }
+                                },
+                                "to": [{ "key_code": "vk_none" }]
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    ]
+}
