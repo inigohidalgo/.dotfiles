@@ -16,7 +16,7 @@ clipboard path — none of which generalize to containers at large.
 |---|---|
 | `options.conf` | shared — server PATH fix, indexing, general options, terminal features |
 | `keys.conf` | shared — session/window/pane bindings, `prefix R` reload |
-| `workflows.conf` | shared — clauder/lazygit popups, and three `tmx` verbs behind popups (`s` switch, `b` join, `M-b` move) (`bind C`/`bind g` and the `tmx` keys are local-tooling-dependent and just error if pressed where the tool is missing) |
+| `workflows.conf` | shared — clauder via `tmx run` (`C` quick chat, `F` fork); lazygit (`g`); the `tmx` pickers in popups (`s` switch, `b` join, `M-b` move); deck: `prefix w` (switch area or workstream), `prefix n` (new workstream) and the `deck` key table behind `prefix d` (`prefix d ?` lists it). Every workbench key runs `${WB_USER_HOME:-$HOME}/.local/bin/{tmx,deck,clauder}`, so on a host where `clauder promote` has not installed them it errors (view mode), like `bind C` always has; `bind g` likewise without lazygit |
 | `theme.conf` | shared — Catppuccin Mocha base; accent + bar shape excluded |
 | `host-local.conf` | prefix `C-a`, titles, blue accent, full status bar |
 | `host-remote.conf` | prefix `M-a`, peach accent, lean ` ssh ` bar |
@@ -37,7 +37,11 @@ override, never a forked copy. Install generates the entry point
 1. **Prefix collision** in tmux-in-tmux: both layers can't bind the same
    prefix. Inner uses `M-a` — same letter as outer's `C-a` (muscle memory),
    and Opt+A arrives as `ESC a`, which survives SSH and the outer tmux
-   without extended-keys gymnastics.
+   without extended-keys gymnastics. That rests on Ghostty's
+   `macos-option-as-alt`, which, left unset, means `true` on the U.S.
+   layouts; on any other layout set it explicitly (`true` or `left`), or
+   every `M-` key here (`M-a` inner prefix, `M-b`, `M-s`, `M-m`) stops
+   working.
 2. **Visual ambiguity** with two status bars on screen: same palette/shape,
    but inner swaps blue → peach on active-window + active-pane-border and
    shows a static ` ssh ` label. Warm vs cool = inner vs outer at a glance.
@@ -105,13 +109,14 @@ module files in this repo. tmux reads the live repo files on every load, so:
 
 ## Prereqs
 
-- **tmux ≥ 3.4** — `workflows.conf` uses `run-shell -E` (3.4+) in seven
-  bindings: `C`, `F`, `s`, `b`, `M-b`, and `w`/`a` in the `deck` table. On an
-  older tmux all seven fail to
+- **tmux ≥ 3.4** — `workflows.conf` uses `run-shell -E` (3.4+) in every
+  workbench binding: `C`, `F`, `s`, `b`, `M-b`, `w`, `n`, and the whole
+  `deck` table (all but `prefix d ?`). On an older tmux all of them fail to
   *register* at config-load time (`tmux: unknown option -- E` / `usage:
   run-shell [-bC]...`); the rest of the config still loads and applies fine,
   and those keys fall back to tmux's own defaults (`prefix s` becomes the stock
-  session tree, `prefix C` `customize-mode -Z`). Confirmed for `bind C` on a
+  session tree, `prefix C` `customize-mode -Z`, `prefix w` `choose-tree`,
+  `prefix n` `next-window`). Confirmed for `bind C` on a
   3.2a container build — not a hard crash like the flag name might suggest,
   just the bindings silently not existing, which is now most of the workflow
   keys rather than one.
@@ -135,7 +140,12 @@ module files in this repo. tmux reads the live repo files on every load, so:
   reason (whether the browser-hosted terminal emits CSI u for Shift+Enter at
   all) — don't assume the SSH-specific root cause carries over uninvestigated.
 - `bind C` (clauder) and `bind g` (lazygit) error visibly on a machine
-  without the tool. Harmless; move to `host-local.conf` if it gets noisy.
+  without the tool, as does every workbench key (`F`, `s`, `b`, `M-b`, `w`,
+  `n`, the `deck` table) without `clauder promote`'s `tmx`/`deck`. Harmless;
+  move to `host-local.conf` if it gets noisy.
+- **`prefix R` adds and overrides bindings but never removes one** a file
+  stopped making: a key dropped from a `.conf` stays bound until the server
+  restarts (or an explicit `unbind`).
 - **Copy-to-system-clipboard doesn't reliably work on `beacon-ide`, and
   there's no full fix — accepted, not resolved**: OSC 52 (tmux's
   `set-clipboard on`, and apps like Claude Code that emit OSC 52 directly)
