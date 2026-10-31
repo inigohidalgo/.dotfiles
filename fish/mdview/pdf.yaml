@@ -16,3 +16,6 @@ variables:
   header-includes:
     - '#show regex("[☐☒]"): set text(font: "Apple Symbols")'
 
+# raw HTML renders as literal text; see raw-html.lua
+filters:
+  - ${MDVIEW_ASSETS}/raw-html.lua

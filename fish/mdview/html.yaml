@@ -12,3 +12,6 @@ css:
   - ${MDVIEW_ASSETS}/github-body.css
 variables:
   lang: en
+# raw HTML renders as literal text; see raw-html.lua
+filters:
+  - ${MDVIEW_ASSETS}/raw-html.lua
