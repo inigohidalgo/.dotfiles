@@ -67,7 +67,7 @@ kill_one() {
   if [ -S "$ZMXDIR/$id" ] && z=$(find_zmx); then
     ZMX_DIR=$ZMXDIR "$z" kill --force "$id" >/dev/null 2>&1
   fi
-  rm -f "$STATE/$id.meta" "$ZMXDIR/logs/$id.log" "$STATE/$id.sock"   # .sock: pre-zmx (dtach)
+  rm -f "$STATE/$id.meta" "$ZMXDIR/logs/$id.log"
   printf 'killed %s%s\n' "$id" "${t:+ ($t)}"
 }
 
@@ -84,11 +84,6 @@ attach)
   if [ -e "$STATE/$id.meta" ] && [ -z "$(live_tty "$id")" ]; then
     notice="[rssh] the shell this pane had on $(hostname -s) is gone (restart or crash?); this is a new one"
     rm -f "$STATE/$id.meta"
-  elif [ -n "$(live_tty "$id")" ] && [ ! -S "$ZMXDIR/$id" ]; then
-    # A live shell with no zmx session predates zmx (it ran under dtach). It can't be
-    # reattached, so end it rather than leave it running with nothing tracking it.
-    kill_one "$id" >/dev/null
-    notice="[rssh] ended this pane's old dtach shell on $(hostname -s); this is a new one"
   fi
   # zmx keeps one log per session and never removes it; drop those of ended sessions.
   for f in "$ZMXDIR"/logs/*.log; do

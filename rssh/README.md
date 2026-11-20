@@ -123,10 +123,6 @@ together when the call format changes.
   input dropped` in `~/.cache/rssh/zmx/logs/ID.log`). In practice that's
   queued-up mouse motion; a stuck program loses keystrokes instead of freezing
   the pane.
-- **Old dtach sessions are ended on attach.** A pane whose shell still runs
-  under dtach (from before zmx) can't be reattached; its next `rssh` ends that
-  shell, prints `[rssh] ended this pane's old dtach shell`, and starts a zmx
-  one. Delete this path once no dtach sessions remain.
 - **macOS process tooling:** `pgrep -t`/`pkill -t` match nothing (use `ps -t` +
   `kill`); `pgrep` hides its own ancestors unless `-a`; a `nohup`ed process
   shows tty `??` once its session leader dies — snapshot before signalling.
