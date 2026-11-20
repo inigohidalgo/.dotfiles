@@ -9,13 +9,14 @@
 # The leading version is the protocol rssh speaks; a mismatch means one machine's
 # dotfiles are behind, and is refused rather than guessed at.
 #
-# A session is a dtach socket $STATE/ID.sock plus $STATE/ID.meta ("PID TTY" of the sh
-# wrapper dtach runs; it runs the login shell and removes .meta when the shell exits).
-# The tty is the kill handle: everything started in the session shares it.
+# A session is a zmx session named ID (socket $ZMXDIR/ID) plus $STATE/ID.meta ("PID TTY"
+# of the sh wrapper zmx runs; it runs the login shell and removes .meta when the shell
+# exits). The tty is the kill handle: everything started in the session shares it.
 # macOS pgrep/pkill -t match nothing here, so use ps -t + kill.
 set -u
 PROTO=v1   # must match rssh's PROTO; bump both together
 STATE=$HOME/.cache/rssh
+ZMXDIR=$STATE/zmx   # pinned: zmx's default follows $TMPDIR, which differs between contexts
 GRACE=3
 
 got=${1:-}
@@ -28,10 +29,10 @@ shift
 
 mkdir -p "$STATE" && chmod 700 "$STATE"
 
-# ssh runs us without a login PATH, so look in Homebrew's two prefixes too.
-find_dtach() {
-  for d in "$(command -v dtach 2>/dev/null)" /opt/homebrew/bin/dtach /usr/local/bin/dtach; do
-    [ -n "$d" ] && [ -x "$d" ] && { printf '%s\n' "$d"; return 0; }
+# ssh runs us without a login PATH, so look in ~/.local/bin and Homebrew's prefixes too.
+find_zmx() {
+  for z in "$(command -v zmx 2>/dev/null)" "$HOME/.local/bin/zmx" /opt/homebrew/bin/zmx /usr/local/bin/zmx; do
+    [ -n "$z" ] && [ -x "$z" ] && { printf '%s\n' "$z"; return 0; }
   done
   return 1
 }
@@ -46,7 +47,7 @@ live_tty() {
 }
 
 kill_one() {
-  id=$1 sock="$STATE/$1.sock" left=
+  id=$1 left=
   t=$(live_tty "$id")
   if [ -n "$t" ]; then
     # Snapshot first: once the session leader dies the kernel revokes the tty, and a
@@ -61,37 +62,52 @@ kill_one() {
     done
     [ -n "$left" ] && kill -KILL $left 2>/dev/null
   fi
-  # The dtach master (and any attached client) has the socket path in its argv.
-  pids=$(pgrep -f "dtach -[aA] $sock" 2>/dev/null)
-  [ -n "$pids" ] && kill $pids 2>/dev/null
-  rm -f "$sock" "$STATE/$id.meta"
+  # The zmx daemon exits with its command; if it's still there (say the .meta was
+  # stale), end it and any attached clients directly.
+  if [ -S "$ZMXDIR/$id" ] && z=$(find_zmx); then
+    ZMX_DIR=$ZMXDIR "$z" kill --force "$id" >/dev/null 2>&1
+  fi
+  rm -f "$STATE/$id.meta" "$ZMXDIR/logs/$id.log" "$STATE/$id.sock"   # .sock: pre-zmx (dtach)
   printf 'killed %s%s\n' "$id" "${t:+ ($t)}"
 }
 
 cmd=${1:-}; [ $# -gt 0 ] && shift
 case $cmd in
 attach)
-  dtach=$(find_dtach) || { echo "rssh-host: dtach not found (brew install dtach)" >&2; exit 5; }
+  zmx=$(find_zmx) || { echo "rssh-host: zmx not found, e.g. in ~/.local/bin (see rssh/README.md)" >&2; exit 5; }
   id=$1 wd=$(printf %s "${2:--}" | base64 -d 2>/dev/null)
   [ -d "$wd" ] || wd=$HOME
   # .meta goes away on exit and on kill, so a .meta whose shell is dead means the shell
-  # died some other way: this host rebooted or crashed. Say so in the new shell. (Printed
-  # from inside the session: dtach clears the screen on attach, wiping anything before.)
+  # died some other way: this host rebooted or crashed. Say so in the new shell (from
+  # inside it, so the notice lands in the session's own screen and scrollback).
   notice=
   if [ -e "$STATE/$id.meta" ] && [ -z "$(live_tty "$id")" ]; then
     notice="[rssh] the shell this pane had on $(hostname -s) is gone (restart or crash?); this is a new one"
-    rm -f "$STATE/$id.sock" "$STATE/$id.meta"
+    rm -f "$STATE/$id.meta"
+  elif [ -n "$(live_tty "$id")" ] && [ ! -S "$ZMXDIR/$id" ]; then
+    # A live shell with no zmx session predates zmx (it ran under dtach). It can't be
+    # reattached, so end it rather than leave it running with nothing tracking it.
+    kill_one "$id" >/dev/null
+    notice="[rssh] ended this pane's old dtach shell on $(hostname -s); this is a new one"
   fi
-  exec "$dtach" -A "$STATE/$id.sock" -E -r winch \
+  # zmx keeps one log per session and never removes it; drop those of ended sessions.
+  for f in "$ZMXDIR"/logs/*.log; do
+    [ -e "$f" ] || continue
+    s=${f##*/}; s=${s%.log}
+    [ "$s" = zmx ] || [ -S "$ZMXDIR/$s" ] || rm -f "$f"
+  done
+  export ZMX_DIR="$ZMXDIR" ZMX_NO_DETACH_KEY=1  # no ctrl+\ detach: closing the pane is the only release
+  unset ZMX_SESSION ZMX_SESSION_PREFIX           # never switch or rename an enclosing zmx session
+  exec "$zmx" attach "$id" \
     /bin/sh -c 'printf "%s %s\n" $$ "$(tty)" > "$1"; [ -n "$4" ] && printf "%s\n" "$4"
                 cd "$2" || cd; "$3" -l; rm -f "$1"' \
     rssh "$STATE/$id.meta" "$wd" "${SHELL:-/bin/zsh}" "$notice"
   ;;
 list)
-  for f in "$STATE"/*.sock "$STATE"/*.meta; do
+  for f in "$STATE"/*.meta; do
     [ -e "$f" ] || continue
-    b=${f##*/}; printf '%s\n' "${b%.*}"
-  done | sort -u | while read -r id; do
+    s=${f##*/}; printf '%s\n' "${s%.meta}"
+  done | while read -r id; do
     t=$(live_tty "$id")
     if [ -n "$t" ]; then
       printf '%s %s [%s]\n' "$id" "$t" "$(ps -t "$t" -o comm= | sed 's#.*/##' | tr '\n' ' ' | sed 's/ $//')"

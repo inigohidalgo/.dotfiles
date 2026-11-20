@@ -14,7 +14,7 @@
 # `rssh HOST [DIR]` is a stable interface: other tools (e.g. workbench's deck) may call
 # it to open a remote shell in a pane rather than reimplement it.
 #
-# Needs rssh-host (~/.local/bin/rssh-host, via `install.sh install rssh`) and dtach on
+# Needs rssh-host (~/.local/bin/rssh-host, via `install.sh install rssh`) and zmx on
 # the remote host, and rex + jq here.
 set -u
 HOSTCMD='~/.local/bin/rssh-host'   # expanded by the remote login shell

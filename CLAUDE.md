@@ -13,8 +13,9 @@ why each rule exists.
 outside this repo (conf.d snippets, installer blocks, vendor completions).
 @rex/README.md — Rex config as dofile'd Lua modules: what each binds, writing a
 module, and how other repos' installers add their own `init.lua` block.
-@rssh/README.md — one persistent remote shell per Rex pane (dtach on the host):
-the ID and release rule, what survives what, and the dtach deadlock.
+@rssh/README.md — one persistent remote shell per Rex pane (zmx on the host):
+the ID and release rule, what survives what, why zmx and not dtach, and
+the hand-built zmx on mbp20.
 
 ## Verifying changes
 

@@ -13,7 +13,7 @@ supports Linux. Where the remote *can* run Rex, use a real Rex host instead.
 | File | Runs on | Role |
 |---|---|---|
 | `rssh` | the Rex machine | `rssh HOST [DIR]` attaches this pane; `rssh gc [-n] HOST` releases closed panes' shells |
-| `rssh-host` | the remote host | wraps `dtach`: `attach`, `list`, `kill` |
+| `rssh-host` | the remote host | wraps [`zmx`](https://zmx.sh): `attach`, `list`, `kill` |
 
 The split that follows a remote pane (`cmd+d` on an mbp20 pane opens another
 mbp20 pane in the same directory) is a Rex module: `rex/rssh-split.lua`.
@@ -22,7 +22,6 @@ mbp20 pane in the same directory) is a Rex module: `rex/rssh-split.lua`.
 
 ```bash
 ./install.sh install rssh home     # both machines: links rssh + rssh-host into ~/.local/bin
-brew install dtach                 # remote host only
 ```
 
 Both commands go on every machine; which one runs depends on the machine's
@@ -31,8 +30,22 @@ so it never depends on where a host keeps its clone of this repo.
 
 Needs, on the Rex machine: `rex`, `jq`, and an `~/.ssh/config` entry for the
 host name the remote shell reports (the split uses it — for mbp20 that's
-`Host inigo-mbp20`). On the remote: `dtach`, and a shell that reports its
-directory with OSC 7 (fish does by default; the split depends on it).
+`Host inigo-mbp20`). On the remote: `zmx` (on `PATH`, or `~/.local/bin`), and
+a shell that reports its directory with OSC 7 (fish does by default; the split
+depends on it).
+
+**zmx on mbp20 is a hand-built binary**, not managed here: v1.0.1 in
+`~/.local/bin/zmx`. zmx's prebuilt macOS binaries require macOS 15 and mbp20
+is on 14, so it was cross-compiled from Apple Silicon with the minimum pinned:
+
+```bash
+git clone https://github.com/neurosnap/zmx && cd zmx && git checkout v1.0.1
+zig build -Doptimize=ReleaseSafe -Dtarget=x86_64-macos.14.0   # Zig 0.17; -> zig-out/bin/zmx
+```
+
+To update, build on mbp20 itself instead (Zig 0.17 isn't installed there yet).
+Without the `.14.0`, Zig targets its default macOS minimum and the binary
+won't start on 14.
 
 ## Use
 
@@ -70,6 +83,24 @@ process on the session's tty, HUPs them, and KILLs survivors after 3s — so
 `nohup`ed and `disown`ed jobs go too. Only something that deliberately left
 the terminal (`setsid`, a self-daemonizing server) escapes.
 
+**Why zmx, not dtach.** rssh started on dtach, and dtach deadlocks under
+Claude Code. Its master writes your input into the pty with a blocking
+`write()` in a single-threaded loop. Claude's fullscreen mode turns on
+any-motion mouse tracking (mode 1003), so moving the mouse floods input; if
+Claude isn't reading input at that moment (say, mid-redraw), the master blocks
+and stops relaying output, and the pane freezes for good. abduco has the same
+blocking write. zmx doesn't: it queues input and writes it without blocking.
+Measured on mbp20 with a program that never reads input, a 47 KB flood of mouse
+reports froze dtach for good while zmx kept up with ten times that. zmx also
+restores the screen and scrollback on reattach, where dtach cleared it.
+
+**State.** Everything lives under `~/.cache/rssh`: `ID.meta` (the wrapper's
+pid and tty) and `zmx/` (zmx's sockets and per-session logs, pinned with
+`ZMX_DIR` because zmx's default follows `$TMPDIR`). zmx never deletes a
+session's log, so attach removes the logs of ended sessions. zmx's `ctrl+\`
+detach key is off (`ZMX_NO_DETACH_KEY`), so leaving a pane's shell is only
+ever `exit`, a dropped connection, or closing the pane.
+
 **Protocol version.** Every call carries `v1`; `rssh-host` refuses any other
 with "update the dotfiles repo on both machines". A mismatch means one
 machine's clone is behind — `git pull` it. Bump `PROTO` in both scripts
@@ -79,38 +110,23 @@ together when the call format changes.
 
 | Event | The remote shell | Getting back to it |
 |---|---|---|
-| Rex machine sleeps, network drops | survives | the pane drops to its local prompt; `rssh HOST` again |
+| Rex machine sleeps, network drops | survives | the pane drops to its local prompt; `rssh HOST` again (screen and scrollback come back) |
 | Rex restarts, Rex machine reboots | survives | the restored pane is local; `rssh HOST` again in it |
 | `exit` in the remote shell | ends; files removed | the pane is back at its local prompt |
 | Pane closed in Rex | orphaned → released by the next `gc` | — |
-| **Remote host reboots or crashes** | **lost** (dtach lives in memory) | the next attach prints `[rssh] the shell this pane had on … is gone`, then starts a new one |
+| **Remote host reboots or crashes** | **lost** (zmx lives in memory) | the next attach prints `[rssh] the shell this pane had on … is gone`, then starts a new one |
 
 ## Sharp edges
 
-- **dtach can deadlock a pane.** dtach's master writes your input into the pty
-  with a blocking `write()` in a single-threaded loop. A program that stops
-  reading input while its own output is blocked wedges it: Claude Code's
-  fullscreen mode enables any-motion mouse tracking (mode 1003), so moving the
-  mouse floods input, and a resize forces a big redraw — both pty buffers fill
-  and nothing moves. Symptom: frozen pane, stale size inside the session.
-  Unwedge without killing anything by flushing the session tty's input queue
-  until the backlog drains (`tty` is the second field of
-  `~/.cache/rssh/ID.meta`; this discards whatever was typed while frozen):
-
-  ```bash
-  ssh mbp20 "/usr/bin/python3 -c 'import os,termios,time
-  fd=os.open(\"/dev/ttys004\",os.O_RDWR|os.O_NOCTTY|os.O_NONBLOCK)
-  for _ in range(20): termios.tcflush(fd,termios.TCIFLUSH); time.sleep(0.25)'"
-  ```
-
-  abduco has the same blocking write. [zmx](https://zmx.sh) doesn't (non-blocking
-  pty, queued input) and is the likely replacement, but its prebuilt macOS
-  binaries need macOS 15 — mbp20 would need a source build. Setting
-  `CLAUDE_CODE_DISABLE_MOUSE=1` on the remote removes the usual trigger at the
-  cost of Claude's mouse support.
-- **dtach clears the visible screen on every attach.** Anything rssh prints
-  must come from *inside* the session (hence the reboot notice is printed by
-  the session wrapper, not before attaching).
+- **Input past 256 KB is dropped.** zmx caps the input it's holding for a
+  program that isn't reading at 256 KB, then drops new input (logged as `pty
+  input dropped` in `~/.cache/rssh/zmx/logs/ID.log`). In practice that's
+  queued-up mouse motion; a stuck program loses keystrokes instead of freezing
+  the pane.
+- **Old dtach sessions are ended on attach.** A pane whose shell still runs
+  under dtach (from before zmx) can't be reattached; its next `rssh` ends that
+  shell, prints `[rssh] ended this pane's old dtach shell`, and starts a zmx
+  one. Delete this path once no dtach sessions remain.
 - **macOS process tooling:** `pgrep -t`/`pkill -t` match nothing (use `ps -t` +
   `kill`); `pgrep` hides its own ancestors unless `-a`; a `nohup`ed process
   shows tty `??` once its session leader dies — snapshot before signalling.
