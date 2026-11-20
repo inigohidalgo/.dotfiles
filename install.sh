@@ -246,8 +246,10 @@ gen_block() {
 
 has_block() {
     local rc="$1" shell="$2"
-    # -e: the Lua marker starts with `--`, which grep would otherwise parse as an option
-    grep -qF -e "$(marker_begin "$shell")" -- "$rc" 2>/dev/null
+    # -x: the marker must be the whole line, as remove_block's awk requires too — a
+    # comment that merely mentions it must not count as an installed block.
+    # -e: the Lua marker starts with `--`, which grep would otherwise parse as an option.
+    grep -qxF -e "$(marker_begin "$shell")" -- "$rc" 2>/dev/null
 }
 
 remove_block() {
