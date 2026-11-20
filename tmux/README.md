@@ -10,6 +10,11 @@ what the host file overrides is that platform's specifics — an ephemeral
 `$HOME` with durable NFS beside it, and a browser-hosted terminal with its own
 clipboard path — none of which generalize to containers at large.
 
+In Rex, the nested layer has an alternative: `rssh` (`../rssh/README.md`)
+gives each Rex pane its own persistent mbp20 shell, so Rex manages panes and
+sessions and the remote only keeps shells alive. The inner-tmux setup here is
+unchanged and still what an outer tmux uses.
+
 ## Layout
 
 | File | Role |

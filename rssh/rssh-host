@@ -1,0 +1,109 @@
+#!/bin/sh
+# rssh-host: host half of rssh, reached as ~/.local/bin/rssh-host. See rssh/README.md.
+#
+#   rssh-host v1 attach ID B64DIR   attach to session ID, creating it (shell in DIR) if needed
+#   rssh-host v1 list               one line per session: ID, then its tty and processes
+#   rssh-host v1 kill ID...         end sessions: HUP everything on the session's tty, KILL
+#                                   survivors after a grace period, remove the files
+#
+# The leading version is the protocol rssh speaks; a mismatch means one machine's
+# dotfiles are behind, and is refused rather than guessed at.
+#
+# A session is a dtach socket $STATE/ID.sock plus $STATE/ID.meta ("PID TTY" of the sh
+# wrapper dtach runs; it runs the login shell and removes .meta when the shell exits).
+# The tty is the kill handle: everything started in the session shares it.
+# macOS pgrep/pkill -t match nothing here, so use ps -t + kill.
+set -u
+PROTO=v1   # must match rssh's PROTO; bump both together
+STATE=$HOME/.cache/rssh
+GRACE=3
+
+got=${1:-}
+if [ "$got" != "$PROTO" ]; then
+  echo "rssh-host: speaks $PROTO, but the client sent '${got}'." >&2
+  echo "rssh-host: update the dotfiles repo on both machines (git pull) and retry." >&2
+  exit 4
+fi
+shift
+
+mkdir -p "$STATE" && chmod 700 "$STATE"
+
+# ssh runs us without a login PATH, so look in Homebrew's two prefixes too.
+find_dtach() {
+  for d in "$(command -v dtach 2>/dev/null)" /opt/homebrew/bin/dtach /usr/local/bin/dtach; do
+    [ -n "$d" ] && [ -x "$d" ] && { printf '%s\n' "$d"; return 0; }
+  done
+  return 1
+}
+
+# Print the session's tty (e.g. ttys004) if its wrapper is alive and still on the tty
+# recorded at start; print nothing otherwise. Guards against a reused tty.
+live_tty() {
+  [ -r "$STATE/$1.meta" ] || return 0
+  read -r pid tty < "$STATE/$1.meta" || return 0
+  cur=$(ps -o tty= -p "$pid" 2>/dev/null | tr -d ' ')
+  [ -n "$cur" ] && [ "$cur" = "${tty#/dev/}" ] && printf '%s\n' "$cur"
+}
+
+kill_one() {
+  id=$1 sock="$STATE/$1.sock" left=
+  t=$(live_tty "$id")
+  if [ -n "$t" ]; then
+    # Snapshot first: once the session leader dies the kernel revokes the tty, and a
+    # HUP-immune survivor (nohup) shows as tty "??" -- invisible to a second ps -t.
+    snap=$(ps -t "$t" -o pid= 2>/dev/null)
+    [ -n "$snap" ] && kill -HUP $snap 2>/dev/null
+    i=0
+    while [ $i -lt $((GRACE * 10)) ]; do
+      left=; for p in $snap; do kill -0 "$p" 2>/dev/null && left="$left $p"; done
+      [ -z "$left" ] && break
+      sleep 0.1; i=$((i + 1))
+    done
+    [ -n "$left" ] && kill -KILL $left 2>/dev/null
+  fi
+  # The dtach master (and any attached client) has the socket path in its argv.
+  pids=$(pgrep -f "dtach -[aA] $sock" 2>/dev/null)
+  [ -n "$pids" ] && kill $pids 2>/dev/null
+  rm -f "$sock" "$STATE/$id.meta"
+  printf 'killed %s%s\n' "$id" "${t:+ ($t)}"
+}
+
+cmd=${1:-}; [ $# -gt 0 ] && shift
+case $cmd in
+attach)
+  dtach=$(find_dtach) || { echo "rssh-host: dtach not found (brew install dtach)" >&2; exit 5; }
+  id=$1 wd=$(printf %s "${2:--}" | base64 -d 2>/dev/null)
+  [ -d "$wd" ] || wd=$HOME
+  # .meta goes away on exit and on kill, so a .meta whose shell is dead means the shell
+  # died some other way: this host rebooted or crashed. Say so in the new shell. (Printed
+  # from inside the session: dtach clears the screen on attach, wiping anything before.)
+  notice=
+  if [ -e "$STATE/$id.meta" ] && [ -z "$(live_tty "$id")" ]; then
+    notice="[rssh] the shell this pane had on $(hostname -s) is gone (restart or crash?); this is a new one"
+    rm -f "$STATE/$id.sock" "$STATE/$id.meta"
+  fi
+  exec "$dtach" -A "$STATE/$id.sock" -E -r winch \
+    /bin/sh -c 'printf "%s %s\n" $$ "$(tty)" > "$1"; [ -n "$4" ] && printf "%s\n" "$4"
+                cd "$2" || cd; "$3" -l; rm -f "$1"' \
+    rssh "$STATE/$id.meta" "$wd" "${SHELL:-/bin/zsh}" "$notice"
+  ;;
+list)
+  for f in "$STATE"/*.sock "$STATE"/*.meta; do
+    [ -e "$f" ] || continue
+    b=${f##*/}; printf '%s\n' "${b%.*}"
+  done | sort -u | while read -r id; do
+    t=$(live_tty "$id")
+    if [ -n "$t" ]; then
+      printf '%s %s [%s]\n' "$id" "$t" "$(ps -t "$t" -o comm= | sed 's#.*/##' | tr '\n' ' ' | sed 's/ $//')"
+    else
+      printf '%s stale\n' "$id"
+    fi
+  done
+  ;;
+kill)
+  for id in "$@"; do kill_one "$id"; done
+  ;;
+*)
+  sed -n '2,10p' "$0" >&2; exit 2
+  ;;
+esac

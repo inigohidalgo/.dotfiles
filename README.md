@@ -16,6 +16,7 @@ git clone <clone_url> <path>
 ./install.sh install git home     # ~/.gitconfig
 ./install.sh install tmux local   # ~/.config/tmux/tmux.conf
 ./install.sh install karabiner home  # ~/.config/karabiner -> karabiner/config (symlink)
+./install.sh install rssh home       # ~/.local/bin/{rssh,rssh-host} -> rssh/ (symlinks)
 ```
 
 Profiles: `home` (mac) or `work` (wsl) for fish/git; same for bash, plus `beacon-ide` and `dslab`, both opt-in only by name — see below; `local` (outer), `remote` (inner, nested over SSH), or `beacon-ide` (Axpo's browser-based IDE, code-server in a container) for tmux — see `tmux/README.md`. Each profile sources a different set of modules.
@@ -63,6 +64,7 @@ entirely.
 ./install.sh uninstall bash
 ./install.sh uninstall git
 ./install.sh uninstall tmux
+./install.sh uninstall rssh
 ```
 
 ## How it works
@@ -72,10 +74,14 @@ dotfiles >>>`) of `source` / `source-file` / `include` lines to the target rc
 file (`~/.config/fish/config.fish`, `~/.bashrc`, `~/.gitconfig`, or
 `~/.config/tmux/tmux.conf`); uninstall removes exactly that block.
 
-The one exception is **karabiner**: Karabiner-Elements has no include
-mechanism, so there's no block to write. Install symlinks the whole
-`~/.config/karabiner` directory to `karabiner/config/` instead, and uninstall
-swaps the symlink for a real copy — see `karabiner/README.md`.
+Two exceptions are symlinks, because there's no rc file to put a block in:
+
+- **karabiner**: Karabiner-Elements has no include mechanism. Install symlinks
+  the whole `~/.config/karabiner` directory to `karabiner/config/` instead, and
+  uninstall swaps the symlink for a real copy — see `karabiner/README.md`.
+- **rssh**: two commands rather than config. Install links `rssh` and
+  `rssh-host` into `~/.local/bin` (moving anything already there aside), and
+  uninstall removes only its own links — see `rssh/README.md`.
 
 The block points at the live files in this repo, which the shell reads on every
 startup. So:

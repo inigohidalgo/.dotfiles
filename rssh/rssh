@@ -1,0 +1,72 @@
+#!/bin/sh
+# rssh: one persistent shell on a remote host per Rex pane. See rssh/README.md.
+#
+#   rssh HOST [DIR]       attach this pane to its shell on HOST, creating it in DIR
+#                         (default: remote home) if it doesn't exist yet
+#   rssh gc [-n] HOST     end HOST's sessions whose Rex pane no longer exists (-n: dry run)
+#
+# The session ID is this Rex server's host ID + the pane's block ID. Block IDs survive
+# sleeps, dropped connections and Rex restarts, and go away only when the pane closes,
+# so "does the pane still exist" decides whether the remote shell is still wanted.
+# If the connection drops you are back at the local prompt; run rssh again to reattach.
+# Each attach also runs gc for that host in the background.
+#
+# `rssh HOST [DIR]` is a stable interface: other tools (e.g. workbench's deck) may call
+# it to open a remote shell in a pane rather than reimplement it.
+#
+# Needs rssh-host (~/.local/bin/rssh-host, via `install.sh install rssh`) and dtach on
+# the remote host, and rex + jq here.
+set -u
+HOSTCMD='~/.local/bin/rssh-host'   # expanded by the remote login shell
+PROTO=v1                           # must match rssh-host's PROTO; bump both together
+
+# Prefix that scopes session IDs to this Rex server, so gc never touches sessions that
+# belong to another machine's Rex.
+server_prefix() {
+  rex whoami --json 2>/dev/null | jq -er '.host_id[0:8]'
+}
+
+gc() {
+  dry=0; [ "${1:-}" = -n ] && { dry=1; shift; }
+  host=${1:?usage: rssh gc [-n] HOST}
+  prefix=$(server_prefix) || { echo "rssh gc: can't reach Rex; not touching anything" >&2; return 1; }
+
+  # Every block on this Rex server. Fail safe: any error, or an empty list, kills nothing.
+  sessions=$(rex ls --json | jq -er '(.sessions // .)[] | (.session_id // .id)') \
+    || { echo "rssh gc: can't list Rex sessions; not touching anything" >&2; return 1; }
+  blocks=$(for s in $sessions; do
+    rex block ls -s "$s" --json | jq -er '(.blocks // .)[] | (.block_id // .id)' || echo FAIL
+  done)
+  case $blocks in *FAIL*|'') echo "rssh gc: can't list Rex blocks; not touching anything" >&2; return 1 ;; esac
+
+  listing=$(ssh -n -o BatchMode=yes -o ConnectTimeout=5 "$host" "$HOSTCMD $PROTO list") \
+    || { echo "rssh gc: can't list $host" >&2; return 1; }
+
+  dead=
+  for id in $(printf '%s\n' "$listing" | awk '{print $1}'); do
+    case $id in "$prefix"-*) ;; *) continue ;; esac   # another Rex server's session
+    if printf '%s\n' "$blocks" | awk -v b="block:${id#"$prefix"-}" '$0 == b { f = 1 } END { exit !f }'; then
+      echo "keep    $id"
+    else
+      echo "release $id"; dead="$dead $id"
+    fi
+  done
+  [ -z "$dead" ] && return 0
+  [ $dry -eq 1 ] && { echo "(dry run)"; return 0; }
+  ssh -n -o BatchMode=yes -o ConnectTimeout=5 "$host" "$HOSTCMD $PROTO kill$dead"
+}
+
+if [ "${1:-}" = gc ]; then shift; gc "$@"; exit; fi
+
+host=${1:?usage: rssh HOST [DIR] | rssh gc [-n] HOST}
+wd=${2:-}
+[ -n "${REX_BLOCK:-}" ] || { echo "rssh: not in a Rex pane (REX_BLOCK unset)" >&2; exit 2; }
+prefix=$(server_prefix) || { echo "rssh: can't reach Rex" >&2; exit 1; }
+id="$prefix-${REX_BLOCK#block:}"
+
+# Release closed panes' shells on this host, beside the connection rather than before it
+# (the 1s head start lets our ssh become the control master). Double fork: the inner job
+# is orphaned to launchd at once, so it isn't left as a zombie under the ssh we exec.
+( (sleep 1; gc "$host") </dev/null >/dev/null 2>&1 & )
+
+exec ssh -t "$host" "$HOSTCMD $PROTO attach $id $(printf %s "${wd:--}" | base64)"

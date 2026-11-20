@@ -67,9 +67,9 @@ GIT_WORK_DEFAULT="work"
 GIT_WORK_OVERRIDE_GITDIRS="dev/repos/ihr/ ~/plan/"
 
 usage() {
-    echo "Usage: $0 <install|uninstall> <fish|bash|git|tmux|karabiner> [profile]"
+    echo "Usage: $0 <install|uninstall> <fish|bash|git|tmux|karabiner|rssh> [profile]"
     echo "  profile is required for install, ignored for uninstall"
-    echo "  profiles: fish/git → home|work, bash → home|work|beacon-ide|dslab, tmux → local|remote|beacon-ide, karabiner → home"
+    echo "  profiles: fish/git → home|work, bash → home|work|beacon-ide|dslab, tmux → local|remote|beacon-ide, karabiner|rssh → home"
     exit 1
 }
 
@@ -134,7 +134,7 @@ valid_profiles() {
     case "$1" in
         tmux) echo "local remote beacon-ide" ;;
         bash) echo "home work beacon-ide dslab" ;;
-        karabiner) echo "home" ;;
+        karabiner|rssh) echo "home" ;;
         *)    echo "home work" ;;
     esac
 }
@@ -321,6 +321,52 @@ uninstall_karabiner() {
     echo "Replaced symlink $dst with a copy of $KARABINER_SRC"
 }
 
+# --- rssh: commands linked into ~/.local/bin ---
+#
+# rssh is two commands rather than config, so there is no rc file to put a block
+# in: install links both into ~/.local/bin, which every shell (fish, bash, and the
+# PATH-less one `ssh host cmd` gets) can reach. Both go on every machine — `rssh`
+# is what a Rex machine runs, `rssh-host` what a remote host is reached through —
+# so one target serves both roles. rssh calls the host side by that fixed path,
+# which keeps it independent of where each host keeps its clone of this repo.
+
+RSSH_SRC="$SCRIPT_DIR/rssh"
+RSSH_BIN="$HOME/.local/bin"
+RSSH_CMDS="rssh rssh-host"
+
+install_rssh() {
+    mkdir -p "$RSSH_BIN"
+    local cmd dst
+    for cmd in $RSSH_CMDS; do
+        dst="$RSSH_BIN/$cmd"
+        if [[ -L "$dst" && "$(readlink "$dst")" == "$RSSH_SRC/$cmd" ]]; then
+            echo "Already linked: $dst -> $RSSH_SRC/$cmd"
+            continue
+        fi
+        if [[ -e "$dst" || -L "$dst" ]]; then
+            local aside
+            aside="$dst.pre-dotfiles-$(date +%Y%m%d-%H%M%S)"
+            mv "$dst" "$aside"
+            echo "Moved existing $dst aside to $aside"
+        fi
+        ln -s "$RSSH_SRC/$cmd" "$dst"
+        echo "Linked $dst -> $RSSH_SRC/$cmd"
+    done
+}
+
+uninstall_rssh() {
+    local cmd dst
+    for cmd in $RSSH_CMDS; do
+        dst="$RSSH_BIN/$cmd"
+        if [[ -L "$dst" && "$(readlink "$dst")" == "$RSSH_SRC/$cmd" ]]; then
+            rm "$dst"
+            echo "Removed $dst"
+        else
+            echo "No dotfiles link at $dst"
+        fi
+    done
+}
+
 # --- main ---
 
 [[ $# -lt 2 ]] && usage
@@ -328,7 +374,7 @@ uninstall_karabiner() {
 action="$1"
 shell="$2"
 
-[[ "$shell" != "fish" && "$shell" != "bash" && "$shell" != "git" && "$shell" != "tmux" && "$shell" != "karabiner" ]] && usage
+[[ "$shell" != "fish" && "$shell" != "bash" && "$shell" != "git" && "$shell" != "tmux" && "$shell" != "karabiner" && "$shell" != "rssh" ]] && usage
 
 case "$action" in
     install)
@@ -337,6 +383,8 @@ case "$action" in
         [[ " $(valid_profiles "$shell") " != *" $profile "* ]] && usage
         if [[ "$shell" == "karabiner" ]]; then
             install_karabiner
+        elif [[ "$shell" == "rssh" ]]; then
+            install_rssh
         else
             install "$shell" "$profile"
         fi
@@ -344,6 +392,8 @@ case "$action" in
     uninstall)
         if [[ "$shell" == "karabiner" ]]; then
             uninstall_karabiner
+        elif [[ "$shell" == "rssh" ]]; then
+            uninstall_rssh
         else
             uninstall "$shell"
         fi

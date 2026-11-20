@@ -1,7 +1,8 @@
 # CLAUDE.md
 
 Personal dotfiles — fish/bash shell, git, and tmux config, wired into rc files
-by `install.sh`; plus Karabiner-Elements, symlinked as a whole directory.
+by `install.sh`; plus Karabiner-Elements, symlinked as a whole directory; plus
+`rssh`, persistent remote shells per Rex pane, linked into `~/.local/bin`.
 
 @README.md — install, profiles, and how the install mechanism works (marker
 block, live files, edit-vs-reinstall).
@@ -10,6 +11,8 @@ block, live files, edit-vs-reinstall).
 why each rule exists.
 @fish/README.md — inventory of the live fish customizations that come from
 outside this repo (conf.d snippets, installer blocks, vendor completions).
+@rssh/README.md — one persistent remote shell per Rex pane (dtach on the host):
+the ID and release rule, what survives what, and the dtach deadlock.
 
 ## Verifying changes
 
