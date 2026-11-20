@@ -2,8 +2,13 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-MARKER_BEGIN="# <<< dotfiles >>>"
-MARKER_END="# <<< /dotfiles >>>"
+
+# Every block opens and closes with `<<< dotfiles >>>` / `<<< /dotfiles >>>`,
+# written as a comment in the rc file's own language: `#` everywhere except Lua
+# (rex), where `#` isn't a comment and `--` is.
+comment_leader() { case "$1" in rex) echo "--" ;; *) echo "#" ;; esac; }
+marker_begin()   { echo "$(comment_leader "$1") <<< dotfiles >>>"; }
+marker_end()     { echo "$(comment_leader "$1") <<< /dotfiles >>>"; }
 
 # This script is not the only installer that writes marker blocks into these rc
 # files. `clauder install` writes its own, namespaced `# <<< clauder >>>`, and
@@ -47,6 +52,12 @@ TMUX_LOCAL="options keys workflows theme host-local"
 TMUX_REMOTE="options keys workflows theme host-remote"
 TMUX_BEACON_IDE="options keys workflows theme host-beacon-ide"
 
+# rex: Lua modules dofile'd from ~/.config/rex/init.lua. Other repos' installers
+# (e.g. clauder shipping deck actions) are meant to add their own namespaced block
+# there, `-- <<< NAME >>>`, the same way clauder does in the shell rc files — so
+# each installer only ever touches its own block.
+REX_HOME="edited-file rssh-split"
+
 # git: identity defaults flip per profile, "other" identity is wired via includeIf
 #
 # The ~/ anchor is deliberate where it appears and deliberately absent where it
@@ -67,9 +78,9 @@ GIT_WORK_DEFAULT="work"
 GIT_WORK_OVERRIDE_GITDIRS="dev/repos/ihr/ ~/plan/"
 
 usage() {
-    echo "Usage: $0 <install|uninstall> <fish|bash|git|tmux|karabiner|rssh> [profile]"
+    echo "Usage: $0 <install|uninstall> <fish|bash|git|tmux|rex|karabiner|rssh> [profile]"
     echo "  profile is required for install, ignored for uninstall"
-    echo "  profiles: fish/git → home|work, bash → home|work|beacon-ide|dslab, tmux → local|remote|beacon-ide, karabiner|rssh → home"
+    echo "  profiles: fish/git → home|work, bash → home|work|beacon-ide|dslab, tmux → local|remote|beacon-ide, rex|karabiner|rssh → home"
     exit 1
 }
 
@@ -121,12 +132,23 @@ tmux_rc() {
     echo "$rc"
 }
 
+rex_rc() {
+    # Rex reads $REX_CONFIG, else rex/init.lua under $XDG_CONFIG_HOME (falling
+    # back to ~/.config). Mirror that — but note it's the Rex *server's*
+    # environment that counts (the Rex app starts it), not this shell's, the same
+    # caveat as karabiner. Both are normally unset, giving ~/.config/rex/init.lua.
+    local rc="${REX_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/rex/init.lua}"
+    mkdir -p "$(dirname "$rc")"
+    echo "$rc"
+}
+
 get_rc() {
     case "$1" in
         fish) fish_rc ;;
         bash) bash_rc ;;
         git)  git_rc  ;;
         tmux) tmux_rc ;;
+        rex)  rex_rc  ;;
     esac
 }
 
@@ -134,7 +156,7 @@ valid_profiles() {
     case "$1" in
         tmux) echo "local remote beacon-ide" ;;
         bash) echo "home work beacon-ide dslab" ;;
-        karabiner|rssh) echo "home" ;;
+        rex|karabiner|rssh) echo "home" ;;
         *)    echo "home work" ;;
     esac
 }
@@ -158,32 +180,41 @@ gen_block() {
             modules="$(get_modules "$shell" "$profile")"
             dir="$SCRIPT_DIR/fish"
             ext=".fish"
-            echo "$MARKER_BEGIN"
+            marker_begin "$shell"
             echo "set -x DOTFILE_DIR \"$dir\""
             for mod in $modules; do
                 echo "source \$DOTFILE_DIR/${mod}${ext}"
             done
-            echo "$MARKER_END"
+            marker_end "$shell"
             ;;
         bash)
             modules="$(get_modules "$shell" "$profile")"
             dir="$SCRIPT_DIR/sh"
             ext=".sh"
-            echo "$MARKER_BEGIN"
+            marker_begin "$shell"
             echo "export DOTFILE_DIR=\"$dir\""
             for mod in $modules; do
                 echo "source \"\$DOTFILE_DIR/${mod}${ext}\""
             done
-            echo "$MARKER_END"
+            marker_end "$shell"
             ;;
         tmux)
             modules="$(get_modules "$shell" "$profile")"
             dir="$SCRIPT_DIR/tmux"
-            echo "$MARKER_BEGIN"
+            marker_begin "$shell"
             for mod in $modules; do
                 echo "source-file \"$dir/${mod}.conf\""
             done
-            echo "$MARKER_END"
+            marker_end "$shell"
+            ;;
+        rex)
+            modules="$(get_modules "$shell" "$profile")"
+            dir="$SCRIPT_DIR/rex"
+            marker_begin "$shell"
+            for mod in $modules; do
+                echo "dofile(\"$dir/${mod}.lua\")"
+            done
+            marker_end "$shell"
             ;;
         git)
             dir="$SCRIPT_DIR/git"
@@ -200,7 +231,7 @@ gen_block() {
                     override_id="personal"
                     ;;
             esac
-            echo "$MARKER_BEGIN"
+            marker_begin "$shell"
             echo "[include]"
             echo "    path = $dir/common"
             echo "    path = $dir/identity-${default_id}"
@@ -208,24 +239,26 @@ gen_block() {
                 echo "[includeIf \"gitdir:${gd}\"]"
                 echo "    path = $dir/identity-${override_id}"
             done
-            echo "$MARKER_END"
+            marker_end "$shell"
             ;;
     esac
 }
 
 has_block() {
-    grep -qF "$MARKER_BEGIN" "$1" 2>/dev/null
+    local rc="$1" shell="$2"
+    # -e: the Lua marker starts with `--`, which grep would otherwise parse as an option
+    grep -qF -e "$(marker_begin "$shell")" -- "$rc" 2>/dev/null
 }
 
 remove_block() {
-    local rc="$1"
-    if ! has_block "$rc"; then
+    local rc="$1" shell="$2"
+    if ! has_block "$rc" "$shell"; then
         echo "No dotfiles block found in $rc"
         return
     fi
     local tmp
     tmp="$(mktemp)"
-    awk -v begin="$MARKER_BEGIN" -v end="$MARKER_END" '
+    awk -v begin="$(marker_begin "$shell")" -v end="$(marker_end "$shell")" '
         $0 == begin { skip=1; next }
         $0 == end   { skip=0; next }
         !skip
@@ -239,7 +272,7 @@ install() {
     local rc
     rc="$(get_rc "$shell")"
 
-    if has_block "$rc"; then
+    if has_block "$rc" "$shell"; then
         echo "Already installed in $rc — run uninstall first to reinstall"
         exit 1
     fi
@@ -247,16 +280,17 @@ install() {
     echo "" >> "$rc"
     gen_block "$shell" "$profile" >> "$rc"
     echo "Installed dotfiles block ($profile) in $rc"
+    [[ "$shell" == "rex" ]] && echo "Rex reads init.lua at startup: run Reload Config from the command palette" || true
 }
 
 uninstall() {
     local shell="$1"
     local rc
     rc="$(get_rc "$shell")"
-    remove_block "$rc"
+    remove_block "$rc" "$shell"
 }
 
-# --- karabiner: the one symlink-based install ---
+# --- karabiner: a symlink-based install ---
 #
 # Everything above writes a marker block into an rc file this repo doesn't own
 # outright. Karabiner-Elements has no include mechanism, so there is no block to
@@ -374,7 +408,7 @@ uninstall_rssh() {
 action="$1"
 shell="$2"
 
-[[ "$shell" != "fish" && "$shell" != "bash" && "$shell" != "git" && "$shell" != "tmux" && "$shell" != "karabiner" && "$shell" != "rssh" ]] && usage
+[[ "$shell" != "fish" && "$shell" != "bash" && "$shell" != "git" && "$shell" != "tmux" && "$shell" != "rex" && "$shell" != "karabiner" && "$shell" != "rssh" ]] && usage
 
 case "$action" in
     install)
