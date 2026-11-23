@@ -56,7 +56,7 @@ TMUX_BEACON_IDE="options keys workflows theme host-beacon-ide"
 # (e.g. clauder shipping deck actions) are meant to add their own namespaced block
 # there, `-- <<< NAME >>>`, the same way clauder does in the shell rc files — so
 # each installer only ever touches its own block.
-REX_HOME="edited-file rssh-split"
+REX_HOME="edited-file rssh-split claude-fork"
 
 # git: identity defaults flip per profile, "other" identity is wired via includeIf
 #

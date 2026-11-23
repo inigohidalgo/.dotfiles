@@ -20,6 +20,7 @@ applying it.
 |---|---|---|
 | `edited-file.lua` | `cmd+shift+e` | Open a file the focused pane's Claude Code session edited, in a split beside it (fzf when there are several). Its helper, `edited_files.py`, maps the claude pid to its session transcript(s) and lists edited files, most recent first; it's found beside the module, so nothing depends on `~/.config/rex`. Needs `uv`, `fzf`, `nvim`. |
 | `rssh-split.lua` | `cmd+d`, `shift+cmd+d` | On a pane whose shell is on another host (per its OSC 7 cwd), split into a new pane with its own persistent shell on that host, in the same directory, via `rssh` (`../rssh/README.md`). On a local pane, Rex's own split, untouched. |
+| `claude-fork.lua` | `shift+cmd+f` | Fork the focused pane's Claude Code session into a split beside it: same history, new session, same clauder mode and launch directory. A thin trigger for `clauder rex fork` (workbench `docs/rex.md`), which needs an installed clauder at `~/.local/bin/clauder`; a refusal shows in Rex's "Action failed" pill. |
 
 ## Writing a module
 
